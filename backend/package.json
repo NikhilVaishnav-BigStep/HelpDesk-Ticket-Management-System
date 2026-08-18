@@ -9,13 +9,14 @@
   "scripts": {
     "build": "tsc",
     "start": "nodemon dist/server.js",
-    "dev": "tsc --watch"
+    "dev": "tsc | nodemon dist/server.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongoose": "^9.9.3"
+    "mongoose": "^9.9.3",
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
