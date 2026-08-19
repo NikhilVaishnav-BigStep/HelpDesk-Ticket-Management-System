@@ -1,12 +1,10 @@
 import { Router } from "express";
+import { sendSuccess } from "../utils/response.js";
 
 const router = Router();
 
 router.get("/health", (_req, res) => {
-    res.status(200).json({
-        success: true,
-        message: "Helpdesk API is running",
-    });
+    sendSuccess(res, null, "Helpdesk API is running");
 });
 
 export default router;

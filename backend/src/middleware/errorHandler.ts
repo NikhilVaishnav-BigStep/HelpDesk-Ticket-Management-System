@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { AppException } from "../exceptions/AppException.js";
 import { logger } from "../logger/logger.js";
+import { ZodError } from "zod";
 
 export const errorHandler = (
     error: Error,
@@ -8,6 +9,16 @@ export const errorHandler = (
     res: Response,
     _next: NextFunction
 ): void => {
+    if (error instanceof ZodError) {
+        res.status(400).json({
+            success: false,
+            message: "Validation failed",
+            errors: error.issues,
+        });
+
+        return;
+    }
+    
     if (error instanceof AppException) {
         logger.error(error.message);
 
