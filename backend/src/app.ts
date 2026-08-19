@@ -4,6 +4,7 @@ import healthRoutes from "./routes/health.routes.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { notFound } from "./middleware/notFound.js";
+import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(requestLogger);
 
 // Routes
 app.use("/api/v1", healthRoutes);
+app.use("/api/v1/auth", authRoutes);
 
 // Error Handler
 app.use(notFound);
