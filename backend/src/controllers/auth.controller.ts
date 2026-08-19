@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { registerUser } from "../services/auth.service.js";
+import { loginUser, registerUser } from "../services/auth.service.js";
 import { sendSuccess } from "../utils/response.js";
 
 export const register = async (
@@ -13,6 +13,20 @@ export const register = async (
         const { password, ...safeUser } = user.toObject();
 
         sendSuccess(res, safeUser, "User registered successfully", 201);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const login = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+): Promise<void> => {
+    try {
+        const result = await loginUser(req.body);
+
+        sendSuccess(res, result, "Login successful", 200);
     } catch (error) {
         next(error);
     }

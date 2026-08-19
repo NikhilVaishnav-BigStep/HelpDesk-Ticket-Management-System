@@ -9,3 +9,10 @@ export const registerSchema = z.object({
         teamId: z.string().optional(),
     }),
 });
+
+export const loginSchema = z.object({
+    body: z.object({
+        email: z.string().trim().toLowerCase().email(),
+        password: z.string().min(8).max(128),
+    }),
+});
