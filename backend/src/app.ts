@@ -6,6 +6,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { notFound } from "./middleware/notFound.js";
 import authRoutes from "./routes/auth.routes.js";
 import ticketRoutes from "./routes/ticket.routes.js";
+import attachmentRoutes from "./routes/attachment.routes.js";
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(requestLogger);
 app.use("/api/v1", healthRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/tickets", ticketRoutes);
+app.use("/api/v1/attachments", attachmentRoutes);
 
 // Error Handler
 app.use(notFound);

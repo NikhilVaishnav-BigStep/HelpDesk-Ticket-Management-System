@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import multer from "multer";
 import { AppException } from "../exceptions/AppException.js";
 import { logger } from "../logger/logger.js";
 import { ZodError } from "zod";
@@ -20,7 +21,23 @@ export const errorHandler = (
 
         return;
     }
-    
+
+    if (error instanceof multer.MulterError) {
+        if (error.code === "LIMIT_FILE_SIZE") {
+            res.status(400).json({
+                success: false,
+                message: "File too large. Maximum size is 10 MB",
+            });
+            return;
+        }
+
+        res.status(400).json({
+            success: false,
+            message: `Upload error: ${error.message}`,
+        });
+        return;
+    }
+
     if (error instanceof AppException) {
         logger.error(error.message);
 

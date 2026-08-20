@@ -10,9 +10,11 @@ import {
     listHistoryController,
     updateTicketController,
 } from "../controllers/ticket.controller.js";
+import { uploadAttachmentController } from "../controllers/attachment.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
+import { upload } from "../middleware/upload.js";
 import {
     addCommentSchema,
     assignTicketSchema,
@@ -87,6 +89,13 @@ router.get(
     authenticate,
     authorize("agent", "admin"),
     listHistoryController,
+);
+
+router.post(
+    "/:id/attachments",
+    authenticate,
+    upload.single("file"),
+    uploadAttachmentController,
 );
 
 export default router;
