@@ -56,3 +56,37 @@ export const listTicketsSchema = z.object({
             .optional(),
     }),
 });
+
+export const updateTicketSchema = z.object({
+    body: z
+        .object({
+            subject: z
+                .string()
+                .trim()
+                .min(1, "Subject is required")
+                .max(200, "Subject cannot exceed 200 characters")
+                .optional(),
+
+            description: z
+                .string()
+                .trim()
+                .min(1, "Description is required")
+                .optional(),
+
+            priority: z
+                .enum(TicketPriority)
+                .optional(),
+
+            categoryId: z
+                .string()
+                .optional(),
+        })
+        .refine(
+            (data) =>
+                data.subject !== undefined ||
+                data.description !== undefined ||
+                data.priority !== undefined ||
+                data.categoryId !== undefined,
+            { message: "At least one field must be provided for update" },
+        ),
+});

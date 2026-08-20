@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { createNewTicket, getTicketById, getTickets } from "../services/ticket.service.js";
+import { createNewTicket, getTicketById, getTickets, updateTicket } from "../services/ticket.service.js";
 import { sendSuccess } from "../utils/response.js";
 
 export const createTicket = async (
@@ -69,6 +69,29 @@ export const getTicketList = async (
         );
 
         return sendSuccess(res, result, "Tickets retrieved successfully", 200);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateTicketController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const updatedTicket = await updateTicket(
+            String(req.params.id),
+            req.user!.userId,
+            req.body,
+        );
+
+        return sendSuccess(
+            res,
+            updatedTicket,
+            "Ticket updated successfully",
+            200,
+        );
     } catch (error) {
         next(error);
     }
