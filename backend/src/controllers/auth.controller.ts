@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { loginUser, registerUser } from "../services/auth.service.js";
+import { adminCreateUser, loginUser, registerUser } from "../services/auth.service.js";
 import { sendSuccess } from "../utils/response.js";
 
 export const register = async (
@@ -10,9 +10,27 @@ export const register = async (
     try {
         const user = await registerUser(req.body);
 
-        const { password, ...safeUser } = user.toObject();
+        const safeUser = user.toObject();
+        delete safeUser.password;
 
         sendSuccess(res, safeUser, "User registered successfully", 201);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const adminCreateUserController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+): Promise<void> => {
+    try {
+        const user = await adminCreateUser(req.body);
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { password, ...safeUser } = user.toObject();
+
+        sendSuccess(res, safeUser, "User created successfully", 201);
     } catch (error) {
         next(error);
     }

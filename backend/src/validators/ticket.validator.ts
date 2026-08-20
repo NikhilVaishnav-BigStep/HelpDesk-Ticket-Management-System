@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TicketPriority } from "../models/Ticket.js";
+import { TicketPriority, TicketStatus } from "../models/Ticket.js";
 
 export const createTicketSchema = z.object({
     body: z.object({
@@ -89,4 +89,18 @@ export const updateTicketSchema = z.object({
                 data.categoryId !== undefined,
             { message: "At least one field must be provided for update" },
         ),
+});
+
+export const assignTicketSchema = z.object({
+    body: z.object({
+        assigneeId: z.string().min(1, "Assignee ID is required"),
+    }),
+});
+
+export const changeStatusSchema = z.object({
+    body: z.object({
+        status: z.enum(
+            TicketStatus as unknown as [string, ...string[]],
+        ),
+    }),
 });

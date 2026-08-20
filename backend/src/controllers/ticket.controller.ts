@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { createNewTicket, getTicketById, getTickets, updateTicket } from "../services/ticket.service.js";
+import { assignTicket, changeTicketStatus, createNewTicket, getTicketById, getTickets, updateTicket } from "../services/ticket.service.js";
 import { sendSuccess } from "../utils/response.js";
 
 export const createTicket = async (
@@ -90,6 +90,47 @@ export const updateTicketController = async (
             res,
             updatedTicket,
             "Ticket updated successfully",
+            200,
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const assignTicketController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const ticket = await assignTicket(
+            String(req.params.id),
+            req.body.assigneeId,
+            req.user!.userId,
+        );
+
+        return sendSuccess(res, ticket, "Ticket assigned successfully", 200);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const changeStatusController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const ticket = await changeTicketStatus(
+            String(req.params.id),
+            req.body.status,
+            req.user!.userId,
+        );
+
+        return sendSuccess(
+            res,
+            ticket,
+            "Ticket status changed successfully",
             200,
         );
     } catch (error) {

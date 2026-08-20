@@ -7,8 +7,10 @@ export const errorHandler = (
     error: Error,
     _req: Request,
     res: Response,
-    _next: NextFunction
+    next: NextFunction,
 ): void => {
+    void next;
+
     if (error instanceof ZodError) {
         res.status(400).json({
             success: false,

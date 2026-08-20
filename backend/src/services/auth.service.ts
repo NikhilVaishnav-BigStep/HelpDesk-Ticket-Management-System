@@ -8,7 +8,13 @@ interface RegisterUserInput {
     name: string;
     email: string;
     password: string;
-    role?: UserRole;
+}
+
+interface AdminCreateUserInput {
+    name: string;
+    email: string;
+    password: string;
+    role: UserRole;
     teamId?: string;
 }
 
@@ -21,9 +27,32 @@ export const registerUser = async ({
     name,
     email,
     password,
-    role = "customer",
-    teamId,
 }: RegisterUserInput) => {
+    const existingUser = await findUserByEmail(email);
+
+    if (existingUser) {
+        throw new AppException("Email is already registered", 409);
+    }
+
+    const hashedPassword = await hashPassword(password);
+
+    const user = await createUser({
+        name,
+        email,
+        password: hashedPassword,
+        role: "customer",
+    });
+
+    return user;
+};
+
+export const adminCreateUser = async ({
+    name,
+    email,
+    password,
+    role,
+    teamId,
+}: AdminCreateUserInput) => {
     const existingUser = await findUserByEmail(email);
 
     if (existingUser) {
