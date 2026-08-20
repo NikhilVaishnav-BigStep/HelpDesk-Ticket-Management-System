@@ -453,11 +453,11 @@ export const reopenTicket = async (
             reopenedAt: now,
             responseDueAt,
             resolutionDueAt,
-            respondedAt: undefined,
-            resolvedAt: undefined,
-            closedAt: undefined,
+            respondedAt: null,
+            resolvedAt: null,
+            closedAt: null,
             breached: false,
-        } as Parameters<typeof updateTicketById>[1],
+        } as unknown as Parameters<typeof updateTicketById>[1],
     );
 
     if (!updatedTicket) {
