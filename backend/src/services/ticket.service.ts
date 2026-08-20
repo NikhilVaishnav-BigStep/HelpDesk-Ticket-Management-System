@@ -1,5 +1,5 @@
 import { createTicket, findTicketById, findTickets, updateTicketById } from "../repositories/ticket.repository.js";
-import { TicketPriority, TicketStatus } from "../models/Ticket.js";
+import { TicketPriority, TicketStatus, type ITicket } from "../models/Ticket.js";
 import { AppException } from "../exceptions/AppException.js";
 import { Types } from "mongoose";
 import { recordTicketHistory } from "./ticketHistory.service.js";
@@ -8,6 +8,19 @@ import {
     computeSlaDueDates,
     detectAndRecordBreach,
 } from "./sla.service.js";
+import { notificationService } from "./notifications/index.js";
+import { logger } from "../logger/logger.js";
+
+const fireNotification = async (
+    fn: () => Promise<void>,
+    label: string,
+): Promise<void> => {
+    try {
+        await fn();
+    } catch (error) {
+        logger.error(`Notification hook failed: ${label}`, error);
+    }
+};
 
 interface CreateTicketData {
     customerId: string;
@@ -24,7 +37,7 @@ export const createNewTicket = async (
     const { responseDueAt, resolutionDueAt } =
         await computeSlaDueDates(priority);
 
-    return createTicket({
+    const ticket = await createTicket({
         customerId: new Types.ObjectId(ticketData.customerId),
         subject: ticketData.subject,
         description: ticketData.description,
@@ -36,6 +49,13 @@ export const createNewTicket = async (
         responseDueAt,
         resolutionDueAt,
     });
+
+    await fireNotification(
+        () => notificationService.notifyTicketCreated(ticket),
+        "notifyTicketCreated",
+    );
+
+    return ticket;
 };
 
 export const getTicketById = async (
@@ -68,6 +88,11 @@ export const getTickets = async (
         priority?: string;
         assigneeId?: string;
         categoryId?: string;
+        startDate?: string;
+        endDate?: string;
+        search?: string;
+        sortBy?: "createdAt" | "updatedAt" | "priority" | "status";
+        order?: "asc" | "desc";
     },
 ) => {
     const skip = (page - 1) * limit;
@@ -282,6 +307,16 @@ export const assignTicket = async (
         });
     }
 
+    await fireNotification(
+        () =>
+            notificationService.notifyTicketAssigned(
+                updatedTicket,
+                previousAssignee,
+                assigneeId,
+            ),
+        "notifyTicketAssigned",
+    );
+
     return updatedTicket;
 };
 
@@ -375,6 +410,16 @@ export const changeTicketStatus = async (
         });
     }
 
+    await fireNotification(
+        () =>
+            notificationService.notifyTicketStatusChanged(
+                updatedTicket,
+                ticket.status,
+                newStatus,
+            ),
+        "notifyTicketStatusChanged",
+    );
+
     return updatedTicket;
 };
 
@@ -427,5 +472,98 @@ export const reopenTicket = async (
         newValue: TicketStatus.IN_PROGRESS,
     });
 
+    await fireNotification(
+        () => notificationService.notifyTicketReopened(updatedTicket),
+        "notifyTicketReopened",
+    );
+
     return updatedTicket;
+};
+
+export interface BulkItemResult {
+    ticketId: string;
+    success: boolean;
+    ticket?: ITicket;
+    error?: { code: number; message: string };
+}
+
+export interface BulkResult {
+    requested: number;
+    succeeded: number;
+    failed: number;
+    results: BulkItemResult[];
+}
+
+const runBulk = async (
+    ticketIds: string[],
+    actor: (id: string) => Promise<ITicket>,
+): Promise<BulkResult> => {
+    const settled = await Promise.all(
+        ticketIds.map(async (ticketId) => {
+            try {
+                const ticket = await actor(ticketId);
+                return { ticketId, success: true, ticket } as BulkItemResult;
+            } catch (error) {
+                if (error instanceof AppException) {
+                    return {
+                        ticketId,
+                        success: false,
+                        error: {
+                            code: error.statusCode,
+                            message: error.message,
+                        },
+                    } satisfies BulkItemResult;
+                }
+                logger.error(
+                    `Bulk operation failed for ticket ${ticketId}`,
+                    error,
+                );
+                return {
+                    ticketId,
+                    success: false,
+                    error: { code: 500, message: "Internal server error" },
+                } satisfies BulkItemResult;
+            }
+        }),
+    );
+
+    const succeeded = settled.filter((r) => r.success).length;
+
+    return {
+        requested: ticketIds.length,
+        succeeded,
+        failed: ticketIds.length - succeeded,
+        results: settled,
+    };
+};
+
+export const bulkAssignTickets = async (
+    ticketIds: string[],
+    assigneeId: string,
+    actorId: string,
+): Promise<BulkResult> => {
+    const assignee = await findUserById(assigneeId);
+    if (!assignee || assignee.deleted) {
+        throw new AppException("Assignee user not found", 404);
+    }
+    if (assignee.role === "customer") {
+        throw new AppException(
+            "Tickets can only be assigned to agents or admins",
+            400,
+        );
+    }
+
+    return runBulk(ticketIds, (id) =>
+        assignTicket(id, assigneeId, actorId),
+    );
+};
+
+export const bulkChangeTicketsStatus = async (
+    ticketIds: string[],
+    newStatus: TicketStatus,
+    actorId: string,
+): Promise<BulkResult> => {
+    return runBulk(ticketIds, (id) =>
+        changeTicketStatus(id, newStatus, actorId),
+    );
 };

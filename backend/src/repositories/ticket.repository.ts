@@ -35,7 +35,15 @@ export interface TicketFilter {
     assigneeId?: string;
     categoryId?: string;
     customerId?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+    sortBy?: "createdAt" | "updatedAt" | "priority" | "status";
+    order?: "asc" | "desc";
 }
+
+const escapeRegex = (input: string): string =>
+    input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export const findTickets = async (
     filters: TicketFilter,
@@ -64,9 +72,30 @@ export const findTickets = async (
         query.customerId = filters.customerId;
     }
 
+    if (filters.startDate || filters.endDate) {
+        const range: Record<string, Date> = {};
+        if (filters.startDate) {
+            range.$gte = new Date(filters.startDate);
+        }
+        if (filters.endDate) {
+            range.$lte = new Date(filters.endDate);
+        }
+        query.createdAt = range;
+    }
+
+    if (filters.search) {
+        const safe = escapeRegex(filters.search.trim());
+        const re = new RegExp(safe, "i");
+        query.$or = [{ subject: re }, { description: re }];
+    }
+
+    const sortField = filters.sortBy ?? "createdAt";
+    const sortOrder = filters.order === "asc" ? 1 : -1;
+    const sort: Record<string, 1 | -1> = { [sortField]: sortOrder };
+
     const [tickets, total] = await Promise.all([
         Ticket.find(query)
-            .sort({ createdAt: -1 })
+            .sort(sort)
             .skip(skip)
             .limit(limit),
 

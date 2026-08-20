@@ -10,6 +10,7 @@ import attachmentRoutes from "./routes/attachment.routes.js";
 import slaRoutes from "./routes/sla.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import reportRoutes from "./routes/report.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api/v1/attachments", attachmentRoutes);
 app.use("/api/v1/sla", slaRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/reports", reportRoutes);
+app.use("/api/v1/users", userRoutes);
 
 // Error Handler
 app.use(notFound);

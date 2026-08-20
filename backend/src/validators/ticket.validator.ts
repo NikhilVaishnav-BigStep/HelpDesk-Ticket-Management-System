@@ -25,36 +25,76 @@ export const createTicketSchema = z.object({
 });
 
 export const listTicketsSchema = z.object({
-    query: z.object({
-        page: z.coerce
-            .number()
-            .int()
-            .min(1)
-            .default(1),
+    query: z
+        .object({
+            page: z.coerce
+                .number()
+                .int()
+                .min(1)
+                .default(1),
 
-        limit: z.coerce
-            .number()
-            .int()
-            .min(1)
-            .max(100)
-            .default(10),
+            limit: z.coerce
+                .number()
+                .int()
+                .min(1)
+                .max(100)
+                .default(10),
 
-        status: z
-            .string()
-            .optional(),
+            status: z
+                .string()
+                .optional(),
 
-        priority: z
-            .string()
-            .optional(),
+            priority: z
+                .string()
+                .optional(),
 
-        assigneeId: z
-            .string()
-            .optional(),
+            assigneeId: z
+                .string()
+                .optional(),
 
-        categoryId: z
-            .string()
-            .optional(),
-    }),
+            categoryId: z
+                .string()
+                .optional(),
+
+            startDate: z
+                .string()
+                .refine(
+                    (val) => !Number.isNaN(Date.parse(val)),
+                    "startDate must be a valid date",
+                )
+                .optional(),
+
+            endDate: z
+                .string()
+                .refine(
+                    (val) => !Number.isNaN(Date.parse(val)),
+                    "endDate must be a valid date",
+                )
+                .optional(),
+
+            search: z
+                .string()
+                .trim()
+                .min(1, "search must not be empty")
+                .max(200, "search cannot exceed 200 characters")
+                .optional(),
+
+            sortBy: z
+                .enum(["createdAt", "updatedAt", "priority", "status"])
+                .default("createdAt"),
+
+            order: z.enum(["asc", "desc"]).default("desc"),
+        })
+        .refine(
+            (data) =>
+                data.startDate === undefined ||
+                data.endDate === undefined ||
+                Date.parse(data.startDate) <= Date.parse(data.endDate),
+            {
+                message: "startDate must be on or before endDate",
+                path: ["startDate"],
+            },
+        ),
 });
 
 export const updateTicketSchema = z.object({

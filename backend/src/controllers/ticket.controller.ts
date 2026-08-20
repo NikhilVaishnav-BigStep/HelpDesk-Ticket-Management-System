@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import {
     assignTicket,
+    bulkAssignTickets,
+    bulkChangeTicketsStatus,
     changeTicketStatus,
     createNewTicket,
     getTicketById,
@@ -8,11 +10,13 @@ import {
     reopenTicket,
     updateTicket,
 } from "../services/ticket.service.js";
+import { TicketStatus } from "../models/Ticket.js";
 import {
     addCommentToTicket,
     getCommentsForTicket,
     getTicketHistory,
 } from "../services/comment.service.js";
+import { getTicketTimeline } from "../services/timeline.service.js";
 import { sendSuccess } from "../utils/response.js";
 import type { UserRole } from "../models/User.js";
 
@@ -67,6 +71,11 @@ export const getTicketList = async (
             priority,
             assigneeId,
             categoryId,
+            startDate,
+            endDate,
+            search,
+            sortBy,
+            order,
         } = req.query;
 
         const result = await getTickets(
@@ -79,6 +88,16 @@ export const getTicketList = async (
                 priority: priority as string | undefined,
                 assigneeId: assigneeId as string | undefined,
                 categoryId: categoryId as string | undefined,
+                startDate: startDate as string | undefined,
+                endDate: endDate as string | undefined,
+                search: search as string | undefined,
+                sortBy: sortBy as
+                    | "createdAt"
+                    | "updatedAt"
+                    | "priority"
+                    | "status"
+                    | undefined,
+                order: order as "asc" | "desc" | undefined,
             },
         );
 
@@ -234,6 +253,75 @@ export const reopenTicketController = async (
         );
 
         return sendSuccess(res, ticket, "Ticket reopened successfully", 200);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const bulkAssignTicketsController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const result = await bulkAssignTickets(
+            req.body.ticketIds,
+            req.body.assigneeId,
+            req.user!.userId,
+        );
+
+        return sendSuccess(
+            res,
+            result,
+            `Bulk assignment completed: ${result.succeeded}/${result.requested} succeeded`,
+            200,
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const bulkChangeStatusController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const result = await bulkChangeTicketsStatus(
+            req.body.ticketIds,
+            req.body.status as TicketStatus,
+            req.user!.userId,
+        );
+
+        return sendSuccess(
+            res,
+            result,
+            `Bulk status change completed: ${result.succeeded}/${result.requested} succeeded`,
+            200,
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getTicketTimelineController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const timeline = await getTicketTimeline(
+            String(req.params.id),
+            req.user!.userId,
+            req.user!.role as UserRole,
+        );
+
+        return sendSuccess(
+            res,
+            timeline,
+            "Ticket timeline retrieved successfully",
+            200,
+        );
     } catch (error) {
         next(error);
     }

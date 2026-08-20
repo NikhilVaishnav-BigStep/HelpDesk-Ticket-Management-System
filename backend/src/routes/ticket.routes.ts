@@ -2,10 +2,13 @@ import { Router } from "express";
 import {
     addCommentController,
     assignTicketController,
+    bulkAssignTicketsController,
+    bulkChangeStatusController,
     changeStatusController,
     createTicket,
     getTicket,
     getTicketList,
+    getTicketTimelineController,
     listCommentsController,
     listHistoryController,
     reopenTicketController,
@@ -24,6 +27,10 @@ import {
     listTicketsSchema,
     updateTicketSchema,
 } from "../validators/ticket.validator.js";
+import {
+    bulkAssignSchema,
+    bulkChangeStatusSchema,
+} from "../validators/bulk.validator.js";
 
 const router = Router();
 
@@ -42,10 +49,32 @@ router.get(
     getTicketList,
 );
 
+router.post(
+    "/bulk/assign",
+    authenticate,
+    authorize("agent", "admin"),
+    validate(bulkAssignSchema),
+    bulkAssignTicketsController,
+);
+
+router.post(
+    "/bulk/status",
+    authenticate,
+    authorize("agent", "admin"),
+    validate(bulkChangeStatusSchema),
+    bulkChangeStatusController,
+);
+
 router.get(
     "/:id",
     authenticate,
     getTicket,
+);
+
+router.get(
+    "/:id/timeline",
+    authenticate,
+    getTicketTimelineController,
 );
 
 router.put(
