@@ -23,6 +23,13 @@ export interface ITicket extends Document {
     status: TicketStatus;
     subject: string;
     description: string;
+    responseDueAt?: Date;
+    resolutionDueAt?: Date;
+    respondedAt?: Date;
+    resolvedAt?: Date;
+    closedAt?: Date;
+    breached?: boolean;
+    reopenedAt?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -75,6 +82,35 @@ const ticketSchema = new Schema<ITicket>(
             type: String,
             required: true,
             trim: true,
+        },
+
+        responseDueAt: {
+            type: Date,
+        },
+
+        resolutionDueAt: {
+            type: Date,
+        },
+
+        respondedAt: {
+            type: Date,
+        },
+
+        resolvedAt: {
+            type: Date,
+        },
+
+        closedAt: {
+            type: Date,
+        },
+
+        breached: {
+            type: Boolean,
+            default: false,
+        },
+
+        reopenedAt: {
+            type: Date,
         },
     },
     {
