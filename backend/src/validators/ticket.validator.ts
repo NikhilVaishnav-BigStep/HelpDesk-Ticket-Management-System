@@ -104,3 +104,14 @@ export const changeStatusSchema = z.object({
         ),
     }),
 });
+
+export const addCommentSchema = z.object({
+    body: z.object({
+        message: z
+            .string()
+            .trim()
+            .min(1, "Message is required")
+            .max(5000, "Message cannot exceed 5000 characters"),
+        type: z.enum(["external", "internal"]).default("external"),
+    }),
+});

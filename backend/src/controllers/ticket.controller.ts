@@ -1,6 +1,19 @@
 import type { Request, Response, NextFunction } from "express";
-import { assignTicket, changeTicketStatus, createNewTicket, getTicketById, getTickets, updateTicket } from "../services/ticket.service.js";
+import {
+    assignTicket,
+    changeTicketStatus,
+    createNewTicket,
+    getTicketById,
+    getTickets,
+    updateTicket,
+} from "../services/ticket.service.js";
+import {
+    addCommentToTicket,
+    getCommentsForTicket,
+    getTicketHistory,
+} from "../services/comment.service.js";
 import { sendSuccess } from "../utils/response.js";
+import type { UserRole } from "../models/User.js";
 
 export const createTicket = async (
     req: Request,
@@ -131,6 +144,76 @@ export const changeStatusController = async (
             res,
             ticket,
             "Ticket status changed successfully",
+            200,
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const addCommentController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const comment = await addCommentToTicket({
+            ticketId: String(req.params.id),
+            authorId: req.user!.userId,
+            role: req.user!.role as UserRole,
+            message: req.body.message,
+            type: req.body.type,
+        });
+
+        return sendSuccess(
+            res,
+            comment,
+            "Comment added successfully",
+            201,
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const listCommentsController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const comments = await getCommentsForTicket({
+            ticketId: String(req.params.id),
+            userId: req.user!.userId,
+            role: req.user!.role as UserRole,
+        });
+
+        return sendSuccess(
+            res,
+            comments,
+            "Comments retrieved successfully",
+            200,
+        );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const listHistoryController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const history = await getTicketHistory({
+            ticketId: String(req.params.id),
+            role: req.user!.role as UserRole,
+        });
+
+        return sendSuccess(
+            res,
+            history,
+            "Ticket history retrieved successfully",
             200,
         );
     } catch (error) {

@@ -1,16 +1,20 @@
 import { Router } from "express";
 import {
+    addCommentController,
     assignTicketController,
     changeStatusController,
     createTicket,
     getTicket,
     getTicketList,
+    listCommentsController,
+    listHistoryController,
     updateTicketController,
 } from "../controllers/ticket.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
 import {
+    addCommentSchema,
     assignTicketSchema,
     changeStatusSchema,
     createTicketSchema,
@@ -63,6 +67,26 @@ router.put(
     authorize("agent", "admin"),
     validate(changeStatusSchema),
     changeStatusController,
+);
+
+router.post(
+    "/:id/comments",
+    authenticate,
+    validate(addCommentSchema),
+    addCommentController,
+);
+
+router.get(
+    "/:id/comments",
+    authenticate,
+    listCommentsController,
+);
+
+router.get(
+    "/:id/history",
+    authenticate,
+    authorize("agent", "admin"),
+    listHistoryController,
 );
 
 export default router;
