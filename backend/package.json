@@ -11,7 +11,9 @@
     "start": "nodemon dist/server.js",
     "dev": "tsc | nodemon dist/server.js",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "seed": "tsx src/seeds/runSeed.ts",
+    "seed:reset": "tsx src/seeds/runSeed.ts --reset"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
