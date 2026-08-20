@@ -4,6 +4,10 @@ import { AppException } from "../exceptions/AppException.js";
 import { Types } from "mongoose";
 import { recordTicketHistory } from "./ticketHistory.service.js";
 import { findUserById } from "../repositories/user.repository.js";
+import {
+    computeSlaDueDates,
+    detectAndRecordBreach,
+} from "./sla.service.js";
 
 interface CreateTicketData {
     customerId: string;
@@ -16,15 +20,21 @@ interface CreateTicketData {
 export const createNewTicket = async (
     ticketData: CreateTicketData,
 ) => {
+    const priority = ticketData.priority ?? TicketPriority.MEDIUM;
+    const { responseDueAt, resolutionDueAt } =
+        await computeSlaDueDates(priority);
+
     return createTicket({
         customerId: new Types.ObjectId(ticketData.customerId),
         subject: ticketData.subject,
         description: ticketData.description,
-        priority: ticketData.priority ?? TicketPriority.MEDIUM,
+        priority,
         categoryId: ticketData.categoryId
             ? new Types.ObjectId(ticketData.categoryId)
             : undefined,
         status: TicketStatus.OPEN,
+        responseDueAt,
+        resolutionDueAt,
     });
 };
 
@@ -33,7 +43,7 @@ export const getTicketById = async (
     userId: string,
     role: string,
 ) => {
-    const ticket = await findTicketById(ticketId);
+    let ticket = await findTicketById(ticketId);
 
     if (!ticket) {
         throw new AppException("Ticket not found", 404);
@@ -42,6 +52,8 @@ export const getTicketById = async (
     if (role === "customer" && ticket.customerId.toString() !== userId) {
         throw new AppException("You are not authorized to access this ticket", 403);
     }
+
+    ticket = await detectAndRecordBreach(ticket, userId);
 
     return ticket;
 };
@@ -71,8 +83,12 @@ export const getTickets = async (
         limit,
     );
 
+    const checkedTickets = await Promise.all(
+        tickets.map((t) => detectAndRecordBreach(t, userId)),
+    );
+
     return {
-        tickets,
+        tickets: checkedTickets,
         pagination: {
             page,
             limit,
@@ -107,7 +123,7 @@ export const updateTicket = async (
         );
     }
 
-    const updatePayload: Partial<UpdateTicketData> = {};
+    const updatePayload: Record<string, unknown> = {};
     const oldPriority = ticket.priority;
 
     if (updates.subject !== undefined) {
@@ -124,6 +140,20 @@ export const updateTicket = async (
 
     if (updates.categoryId !== undefined) {
         updatePayload.categoryId = updates.categoryId;
+    }
+
+    if (
+        updates.priority !== undefined &&
+        updates.priority !== oldPriority
+    ) {
+        const now = new Date();
+        const { responseDueAt, resolutionDueAt } = await computeSlaDueDates(
+            updates.priority,
+            now,
+        );
+        updatePayload.responseDueAt = responseDueAt;
+        updatePayload.resolutionDueAt = resolutionDueAt;
+        updatePayload.breached = false;
     }
 
     const updatedTicket = await updateTicketById(
@@ -329,6 +359,72 @@ export const changeTicketStatus = async (
             newStatus === TicketStatus.CLOSED ? "close" : "status_change",
         oldValue: ticket.status,
         newValue: newStatus,
+    });
+
+    if (
+        newStatus === TicketStatus.RESOLVED &&
+        updatedTicket.breached &&
+        !ticket.breached
+    ) {
+        await recordTicketHistory({
+            ticketId,
+            actorId,
+            action: "sla_breach",
+            oldValue: "within_sla",
+            newValue: "breached",
+        });
+    }
+
+    return updatedTicket;
+};
+
+export const reopenTicket = async (
+    ticketId: string,
+    actorId: string,
+) => {
+    const ticket = await findTicketById(ticketId);
+
+    if (!ticket) {
+        throw new AppException("Ticket not found", 404);
+    }
+
+    if (ticket.status !== TicketStatus.CLOSED) {
+        throw new AppException(
+            `Only closed tickets can be reopened. Current status: '${ticket.status}'.`,
+            400,
+        );
+    }
+
+    const now = new Date();
+    const { responseDueAt, resolutionDueAt } = await computeSlaDueDates(
+        ticket.priority,
+        now,
+    );
+
+    const updatedTicket = await updateTicketById(
+        ticketId,
+        {
+            status: TicketStatus.IN_PROGRESS,
+            reopenedAt: now,
+            responseDueAt,
+            resolutionDueAt,
+            respondedAt: undefined,
+            resolvedAt: undefined,
+            closedAt: undefined,
+            breached: false,
+        } as Parameters<typeof updateTicketById>[1],
+    );
+
+    if (!updatedTicket) {
+        throw new AppException("Failed to reopen ticket", 500);
+    }
+
+    await recordTicketHistory({
+        ticketId,
+        actorId,
+        action: "reopen",
+        oldValue: TicketStatus.CLOSED,
+        newValue: TicketStatus.IN_PROGRESS,
     });
 
     return updatedTicket;

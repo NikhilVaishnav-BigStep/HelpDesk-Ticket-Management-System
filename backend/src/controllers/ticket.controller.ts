@@ -5,6 +5,7 @@ import {
     createNewTicket,
     getTicketById,
     getTickets,
+    reopenTicket,
     updateTicket,
 } from "../services/ticket.service.js";
 import {
@@ -216,6 +217,23 @@ export const listHistoryController = async (
             "Ticket history retrieved successfully",
             200,
         );
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const reopenTicketController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const ticket = await reopenTicket(
+            String(req.params.id),
+            req.user!.userId,
+        );
+
+        return sendSuccess(res, ticket, "Ticket reopened successfully", 200);
     } catch (error) {
         next(error);
     }

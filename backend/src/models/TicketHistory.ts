@@ -3,7 +3,7 @@ import { Schema, model, type Document, type Types } from "mongoose";
 export interface ITicketHistory extends Document {
     ticketId: Types.ObjectId;
     actorId: Types.ObjectId;
-    action: "status_change" | "assign" | "priority_change" | "comment" | "reopen" | "close" | "other";
+    action: "status_change" | "assign" | "priority_change" | "comment" | "reopen" | "close" | "sla_breach" | "other";
     oldValue: string | null;
     newValue: string | null;
     createdAt: Date;
@@ -33,6 +33,7 @@ const ticketHistorySchema = new Schema<ITicketHistory>(
                 "comment",
                 "reopen",
                 "close",
+                "sla_breach",
                 "other",
             ],
             required: true,

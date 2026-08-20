@@ -2,8 +2,10 @@ import { Schema, model, type Document } from "mongoose";
 
 export interface ISLA extends Document {
     priority: "low" | "medium" | "high" | "urgent";
-    responseTarget: number; // minutes
-    resolutionTarget: number; // minutes;
+    responseTarget?: number; // minutes
+    resolutionTarget?: number; // minutes
+    responseTargetHours?: number;
+    resolutionTargetHours?: number;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -19,12 +21,18 @@ const slaSchema = new Schema<ISLA>(
 
         responseTarget: {
             type: Number,
-            required: true,
         },
 
         resolutionTarget: {
             type: Number,
-            required: true,
+        },
+
+        responseTargetHours: {
+            type: Number,
+        },
+
+        resolutionTargetHours: {
+            type: Number,
         },
     },
     { timestamps: true },

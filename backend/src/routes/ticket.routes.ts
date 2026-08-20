@@ -8,6 +8,7 @@ import {
     getTicketList,
     listCommentsController,
     listHistoryController,
+    reopenTicketController,
     updateTicketController,
 } from "../controllers/ticket.controller.js";
 import { uploadAttachmentController } from "../controllers/attachment.controller.js";
@@ -69,6 +70,13 @@ router.put(
     authorize("agent", "admin"),
     validate(changeStatusSchema),
     changeStatusController,
+);
+
+router.post(
+    "/:id/reopen",
+    authenticate,
+    authorize("agent", "admin"),
+    reopenTicketController,
 );
 
 router.post(
