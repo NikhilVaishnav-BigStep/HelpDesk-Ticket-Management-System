@@ -6,3 +6,18 @@ export const findSLAByPriority = async (
 ): Promise<ISLA | null> => {
     return SLA.findOne({ priority }).exec();
 };
+
+export const findAllSLAs = async (): Promise<ISLA[]> => {
+    return SLA.find({}).sort({ priority: 1 }).exec();
+};
+
+export const upsertSLA = async (
+    priority: TicketPriority,
+    targets: { responseTarget: number; resolutionTarget: number },
+): Promise<ISLA> => {
+    return SLA.findOneAndUpdate(
+        { priority },
+        { $set: { priority, ...targets } },
+        { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true },
+    ).exec() as Promise<ISLA>;
+};

@@ -1,8 +1,9 @@
-import { findSLAByPriority } from "../repositories/sla.repository.js";
+import { findAllSLAs, findSLAByPriority, upsertSLA } from "../repositories/sla.repository.js";
 import { TicketPriority, type ITicket } from "../models/Ticket.js";
 import { logger } from "../logger/logger.js";
 import { recordTicketHistory } from "./ticketHistory.service.js";
 import { updateTicketById } from "../repositories/ticket.repository.js";
+import type { ISLA } from "../models/SLA.js";
 
 export const DEFAULT_SLA_MINUTES: Record<
     TicketPriority,
@@ -105,4 +106,48 @@ export const detectAndRecordBreach = async (
     });
 
     return updated;
+};
+
+export interface SlaPolicyView {
+    priority: TicketPriority;
+    responseTarget: number;
+    resolutionTarget: number;
+    isCustomized: boolean;
+}
+
+export const getAllSLAPolicies = async (): Promise<SlaPolicyView[]> => {
+    const configured = await findAllSLAs();
+    const configuredByPriority = new Map<TicketPriority, ISLA>();
+    for (const sla of configured) {
+        configuredByPriority.set(sla.priority as TicketPriority, sla);
+    }
+
+    const allPriorities = Object.values(TicketPriority) as TicketPriority[];
+
+    return allPriorities.map((priority) => {
+        const doc = configuredByPriority.get(priority);
+        const fallback = DEFAULT_SLA_MINUTES[priority];
+
+        return {
+            priority,
+            responseTarget:
+                doc?.responseTarget ??
+                (doc?.responseTargetHours !== undefined
+                    ? doc.responseTargetHours * 60
+                    : fallback.responseTarget),
+            resolutionTarget:
+                doc?.resolutionTarget ??
+                (doc?.resolutionTargetHours !== undefined
+                    ? doc.resolutionTargetHours * 60
+                    : fallback.resolutionTarget),
+            isCustomized: doc !== undefined,
+        };
+    });
+};
+
+export const updateSLAPolicy = async (
+    priority: TicketPriority,
+    targets: { responseTarget: number; resolutionTarget: number },
+): Promise<ISLA> => {
+    return upsertSLA(priority, targets);
 };
