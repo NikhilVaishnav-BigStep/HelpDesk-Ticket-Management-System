@@ -5,6 +5,7 @@ import {
     softDeleteUser,
     updateUser,
 } from "../services/user.service.js";
+import { resetUserPassword } from "../services/auth.service.js";
 import { sendSuccess } from "../utils/response.js";
 
 export const listUsersController = async (
@@ -70,6 +71,27 @@ export const deleteUserController = async (
     try {
         await softDeleteUser(String(req.params.id));
         return sendSuccess(res, null, "User deleted successfully", 200);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const resetUserPasswordController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        await resetUserPassword(
+            String(req.params.id),
+            req.body.newPassword,
+        );
+        return sendSuccess(
+            res,
+            null,
+            "User password reset successfully",
+            200,
+        );
     } catch (error) {
         next(error);
     }

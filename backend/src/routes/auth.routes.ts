@@ -1,9 +1,19 @@
 import { Router } from "express";
-import { adminCreateUserController, login, register } from "../controllers/auth.controller.js";
+import {
+    adminCreateUserController,
+    changePasswordController,
+    login,
+    register,
+} from "../controllers/auth.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
-import { adminCreateUserSchema, loginSchema, registerSchema } from "../validators/auth.validator.js";
+import {
+    adminCreateUserSchema,
+    changePasswordSchema,
+    loginSchema,
+    registerSchema,
+} from "../validators/auth.validator.js";
 
 const router = Router();
 
@@ -95,6 +105,62 @@ router.post("/register", validate(registerSchema), register);
  *               $ref: "#/components/schemas/Error"
  */
 router.post("/login", validate(loginSchema), login);
+
+/**
+ * @openapi
+ * /auth/change-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Change the current user's password
+ *     description: Authenticated users (customer, agent, or admin) change **their own** password. Requires the current password for verification. The new password must be different from the current one.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currentPassword, newPassword]
+ *             properties:
+ *               currentPassword: { type: string, minLength: 8, maxLength: 128 }
+ *               newPassword: { type: string, minLength: 8, maxLength: 128 }
+ *     responses:
+ *       200:
+ *         description: Password changed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: "#/components/schemas/SuccessEnvelope"
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       nullable: true
+ *                       type: object
+ *       400:
+ *         description: Validation error (missing fields, too short, or newPassword equals currentPassword)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       401:
+ *         description: Missing/invalid JWT, or currentPassword is incorrect
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       404:
+ *         description: User record not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ */
+router.post(
+    "/change-password",
+    authenticate,
+    validate(changePasswordSchema),
+    changePasswordController,
+);
 
 /**
  * @openapi

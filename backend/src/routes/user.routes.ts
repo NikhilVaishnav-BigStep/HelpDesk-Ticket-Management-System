@@ -3,6 +3,7 @@ import {
     deleteUserController,
     getUserController,
     listUsersController,
+    resetUserPasswordController,
     updateUserController,
 } from "../controllers/user.controller.js";
 import { authenticate } from "../middleware/authenticate.js";
@@ -13,6 +14,7 @@ import {
     updateUserSchema,
     userIdParamSchema,
 } from "../validators/user.validator.js";
+import { userResetPasswordSchema } from "../validators/auth.validator.js";
 
 const router = Router();
 
@@ -201,6 +203,65 @@ router.delete(
     "/:id",
     validate(userIdParamSchema),
     deleteUserController,
+);
+
+/**
+ * @openapi
+ * /users/{id}/reset-password:
+ *   post:
+ *     tags: [Users]
+ *     summary: Reset a user's password (admin)
+ *     description: Admin-only. Sets a new password on the target user without requiring the current password. Useful for support / locked-out accounts.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [newPassword]
+ *             properties:
+ *               newPassword: { type: string, minLength: 8, maxLength: 128 }
+ *     responses:
+ *       200:
+ *         description: Password reset
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: "#/components/schemas/SuccessEnvelope"
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       nullable: true
+ *                       type: object
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       403:
+ *         description: Forbidden (non-admin)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       404:
+ *         description: Target user not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ */
+router.post(
+    "/:id/reset-password",
+    validate(userResetPasswordSchema),
+    resetUserPasswordController,
 );
 
 export default router;

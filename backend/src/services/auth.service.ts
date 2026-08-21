@@ -1,4 +1,9 @@
-import { createUser, findUserByEmail } from "../repositories/user.repository.js";
+import {
+    createUser,
+    findUserByEmail,
+    findUserById,
+    updateUserPasswordById,
+} from "../repositories/user.repository.js";
 import { AppException } from "../exceptions/AppException.js";
 import type { UserRole } from "../models/User.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
@@ -108,4 +113,38 @@ export const loginUser = async ({
             teamId: user.teamId,
         },
     };
+};
+
+export const changeOwnPassword = async (
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+): Promise<void> => {
+    const user = await findUserById(userId);
+
+    if (!user || user.deleted) {
+        throw new AppException("User not found", 404);
+    }
+
+    const matches = await comparePassword(currentPassword, user.password);
+    if (!matches) {
+        throw new AppException("Current password is incorrect", 401);
+    }
+
+    const hashed = await hashPassword(newPassword);
+    await updateUserPasswordById(userId, hashed);
+};
+
+export const resetUserPassword = async (
+    targetUserId: string,
+    newPassword: string,
+): Promise<void> => {
+    const user = await findUserById(targetUserId);
+
+    if (!user || user.deleted) {
+        throw new AppException("User not found", 404);
+    }
+
+    const hashed = await hashPassword(newPassword);
+    await updateUserPasswordById(targetUserId, hashed);
 };

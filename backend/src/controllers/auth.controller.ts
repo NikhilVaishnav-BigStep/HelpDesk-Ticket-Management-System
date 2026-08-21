@@ -1,5 +1,10 @@
 import type { Request, Response, NextFunction } from "express";
-import { adminCreateUser, loginUser, registerUser } from "../services/auth.service.js";
+import {
+    adminCreateUser,
+    changeOwnPassword,
+    loginUser,
+    registerUser,
+} from "../services/auth.service.js";
 import { sendSuccess } from "../utils/response.js";
 
 export const register = async (
@@ -45,6 +50,24 @@ export const login = async (
         const result = await loginUser(req.body);
 
         sendSuccess(res, result, "Login successful", 200);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const changePasswordController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+): Promise<void> => {
+    try {
+        await changeOwnPassword(
+            req.user!.userId,
+            req.body.currentPassword,
+            req.body.newPassword,
+        );
+
+        sendSuccess(res, null, "Password changed successfully", 200);
     } catch (error) {
         next(error);
     }

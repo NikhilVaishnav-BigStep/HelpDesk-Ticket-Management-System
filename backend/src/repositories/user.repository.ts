@@ -83,6 +83,17 @@ export const updateUserById = async (
     ).exec();
 };
 
+export const updateUserPasswordById = async (
+    id: string,
+    hashedPassword: string,
+): Promise<IUser | null> => {
+    return User.findOneAndUpdate(
+        { _id: new Types.ObjectId(id), deleted: { $ne: true } },
+        { $set: { password: hashedPassword } },
+        { new: true },
+    ).exec();
+};
+
 export const softDeleteUserById = async (
     id: string,
 ): Promise<IUser | null> => {
