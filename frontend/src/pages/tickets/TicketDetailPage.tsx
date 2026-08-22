@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { getTicketById } from "@/api/ticketApi";
+import {
+    getTicketById,
+    assignTicket,
+    changeTicketStatus,
+    reopenTicket,
+} from "@/api/ticketApi";
 import { getTicketTimeline } from "@/api/timelineApi";
+import { getUsers } from "@/api/userApi";
 
 import { useAuth } from "@/hooks/useAuth";
 
@@ -12,15 +18,37 @@ import AttachmentList from "@/components/tickets/AttachmentList";
 
 import Alert from "@/components/common/Alert";
 import Badge from "@/components/common/Badge";
+import Button from "@/components/common/Button";
+import Select from "@/components/common/Select";
 import Spinner from "@/components/common/Spinner";
 
 import type {
     Attachment,
     Ticket,
+    TicketStatus,
     TicketTimeline as TicketTimelineData,
 } from "@/types/ticket.types";
+import type { User } from "@/types/user.types";
 
 import { formatDateTime } from "@/utils/formatters";
+import { getErrorMessage } from "@/utils/errorHelpers";
+
+// Valid status transitions enforced on the frontend
+const VALID_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
+    open: ["assigned"],
+    assigned: ["in_progress"],
+    in_progress: ["resolved"],
+    resolved: ["closed"],
+    closed: [], // must use reopen endpoint
+};
+
+const STATUS_LABELS: Record<TicketStatus, string> = {
+    open: "Open",
+    assigned: "Assigned",
+    in_progress: "In Progress",
+    resolved: "Resolved",
+    closed: "Closed",
+};
 
 export default function TicketDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -32,6 +60,20 @@ export default function TicketDetailPage() {
 
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+    // Agent/admin controls
+    const [agents, setAgents] = useState<User[]>([]);
+    const [isAssigning, setIsAssigning] = useState(false);
+    const [isChangingStatus, setIsChangingStatus] = useState(false);
+    const [isReopening, setIsReopening] = useState(false);
+
+    const isSupportStaff =
+        user?.role === "agent" || user?.role === "admin";
+
+    const isCustomer = user?.role === "customer";
+
+    // ── Data loading ──────────────────────────────────────
 
     const loadTicket = useCallback(async () => {
         if (!id) {
@@ -86,10 +128,100 @@ export default function TicketDetailPage() {
         loadData();
     }, [loadData]);
 
+    // Load agents for assignee dropdown
+    useEffect(() => {
+        if (!isSupportStaff) return;
+
+        async function loadAgents() {
+            try {
+                const agentData = await getUsers({
+                    role: "agent",
+                    limit: 100,
+                });
+                const adminData = await getUsers({
+                    role: "admin",
+                    limit: 100,
+                });
+                setAgents([...agentData.users, ...adminData.users]);
+            } catch {
+                // Agent list unavailable — dropdown will be empty
+            }
+        }
+
+        loadAgents();
+    }, [isSupportStaff]);
+
     const handleActivityAdded = useCallback(async () => {
         await loadTimeline();
         await loadTicket();
     }, [loadTimeline, loadTicket]);
+
+    // ── Assignment handler ────────────────────────────────
+
+    async function handleAssign(assigneeId: string) {
+        if (!ticket || !assigneeId) return;
+
+        try {
+            setIsAssigning(true);
+            setError(null);
+            setActionSuccess(null);
+
+            const updated = await assignTicket(ticket._id, assigneeId);
+            setTicket(updated);
+            setActionSuccess("Ticket assigned successfully.");
+            await loadTimeline();
+        } catch (err) {
+            setError(getErrorMessage(err));
+        } finally {
+            setIsAssigning(false);
+        }
+    }
+
+    // ── Status change handler ─────────────────────────────
+
+    async function handleStatusChange(newStatus: TicketStatus) {
+        if (!ticket) return;
+
+        try {
+            setIsChangingStatus(true);
+            setError(null);
+            setActionSuccess(null);
+
+            const updated = await changeTicketStatus(ticket._id, newStatus);
+            setTicket(updated);
+            setActionSuccess(
+                `Status changed to "${STATUS_LABELS[newStatus]}".`
+            );
+            await loadTimeline();
+        } catch (err) {
+            setError(getErrorMessage(err));
+        } finally {
+            setIsChangingStatus(false);
+        }
+    }
+
+    // ── Reopen handler ────────────────────────────────────
+
+    async function handleReopen() {
+        if (!ticket) return;
+
+        try {
+            setIsReopening(true);
+            setError(null);
+            setActionSuccess(null);
+
+            const updated = await reopenTicket(ticket._id);
+            setTicket(updated);
+            setActionSuccess("Ticket reopened successfully.");
+            await loadTimeline();
+        } catch (err) {
+            setError(getErrorMessage(err));
+        } finally {
+            setIsReopening(false);
+        }
+    }
+
+    // ── Render states ─────────────────────────────────────
 
     if (isLoading) {
         return (
@@ -107,7 +239,7 @@ export default function TicketDetailPage() {
                 </Alert>
 
                 <Link
-                    to="/customer"
+                    to={isCustomer ? "/customer" : "/agent/queue"}
                     className="inline-flex text-sm font-medium text-blue-600 hover:text-blue-700"
                 >
                     ← Back to tickets
@@ -172,7 +304,8 @@ export default function TicketDetailPage() {
                 };
             }) ?? [];
 
-    const isCustomer = user?.role === "customer";
+    const validNextStatuses = VALID_TRANSITIONS[ticket.status] ?? [];
+    const isClosed = ticket.status === "closed";
 
     return (
         <div className="mx-auto max-w-5xl space-y-6">
@@ -220,6 +353,11 @@ export default function TicketDetailPage() {
                     )}
                 </div>
             </div>
+
+            {/* Feedback banners */}
+            {actionSuccess && (
+                <Alert variant="success">{actionSuccess}</Alert>
+            )}
 
             {error && (
                 <Alert variant="error">
@@ -295,6 +433,106 @@ export default function TicketDetailPage() {
                     </div>
                 </div>
             </section>
+
+            {/* Agent/Admin actions panel */}
+            {isSupportStaff && (
+                <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h2 className="mb-4 text-base font-semibold text-slate-900">
+                        Ticket Actions
+                    </h2>
+
+                    <div className="grid gap-6 md:grid-cols-2">
+                        {/* Assign */}
+                        <div>
+                            <Select
+                                id="assignee-select"
+                                label="Assign to Agent"
+                                value={ticket.assigneeId ?? ""}
+                                onChange={(e) =>
+                                    handleAssign(e.target.value)
+                                }
+                                disabled={isAssigning || isClosed}
+                            >
+                                <option value="">Unassigned</option>
+                                {agents.map((agent) => (
+                                    <option
+                                        key={agent._id}
+                                        value={agent._id}
+                                    >
+                                        {agent.name} ({agent.role})
+                                    </option>
+                                ))}
+                            </Select>
+
+                            {isAssigning && (
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Assigning...
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Status transition */}
+                        <div>
+                            {isClosed ? (
+                                <div>
+                                    <p className="mb-1.5 text-sm font-medium text-slate-700">
+                                        Status
+                                    </p>
+                                    <p className="mb-3 text-sm text-slate-500">
+                                        This ticket is closed. Reopen it to make
+                                        further changes.
+                                    </p>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleReopen}
+                                        loading={isReopening}
+                                    >
+                                        Reopen Ticket
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div>
+                                    <p className="mb-1.5 text-sm font-medium text-slate-700">
+                                        Change Status
+                                    </p>
+
+                                    {validNextStatuses.length > 0 ? (
+                                        <div className="flex flex-wrap gap-2">
+                                            {validNextStatuses.map(
+                                                (status) => (
+                                                    <Button
+                                                        key={status}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            handleStatusChange(
+                                                                status
+                                                            )
+                                                        }
+                                                        loading={
+                                                            isChangingStatus
+                                                        }
+                                                    >
+                                                        →{" "}
+                                                        {STATUS_LABELS[status]}
+                                                    </Button>
+                                                )
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-slate-500">
+                                            No further status transitions
+                                            available.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {/* Timeline */}
             <TicketTimeline
