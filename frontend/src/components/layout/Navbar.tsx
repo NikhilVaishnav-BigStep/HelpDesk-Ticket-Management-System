@@ -20,7 +20,7 @@ export default function Navbar() {
                     <div className="flex items-center gap-4">
                         <Link
                             to="/profile"
-                            className="hidden text-sm text-slate-600 transition hover:text-blue-600 sm:block"
+                            className="text-sm font-medium text-slate-700 transition hover:text-blue-600"
                         >
                             {user.name}
                         </Link>
@@ -32,7 +32,7 @@ export default function Navbar() {
                         <button
                             type="button"
                             onClick={logout}
-                            className="text-sm font-medium text-slate-600 transition hover:text-red-600"
+                            className="text-sm font-medium text-slate-500 transition hover:text-red-600"
                         >
                             Logout
                         </button>

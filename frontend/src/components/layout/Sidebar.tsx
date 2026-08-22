@@ -1,36 +1,7 @@
 import { NavLink } from "react-router-dom";
 
 import { useAuth } from "@/hooks/useAuth";
-import type { UserRole } from "@/types/user.types";
-
-interface NavItem {
-    label: string;
-    path: string;
-    roles: UserRole[];
-}
-
-const navItems: NavItem[] = [
-    {
-        label: "Dashboard",
-        path: "/customer",
-        roles: ["customer"],
-    },
-    {
-        label: "Create Ticket",
-        path: "/tickets/create",
-        roles: ["customer"],
-    },
-    {
-        label: "Agent Queue",
-        path: "/agent/queue",
-        roles: ["agent", "admin"],
-    },
-    {
-        label: "Reports",
-        path: "/admin/reports",
-        roles: ["admin"],
-    },
-];
+import { navigationItems } from "@/utils/navigation";
 
 export default function Sidebar() {
     const { user } = useAuth();
@@ -39,7 +10,7 @@ export default function Sidebar() {
         return null;
     }
 
-    const visibleItems = navItems.filter((item) =>
+    const visibleItems = navigationItems.filter((item) =>
         item.roles.includes(user.role),
     );
 
