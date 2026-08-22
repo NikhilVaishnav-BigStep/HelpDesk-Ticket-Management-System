@@ -27,4 +27,19 @@ export const navigationItems: NavItem[] = [
         path: "/admin/reports",
         roles: ["admin"],
     },
+    {
+        label: "User Management",
+        path: "/admin/users",
+        roles: ["admin"],
+    },
+    {
+        label: "Categories",
+        path: "/admin/categories",
+        roles: ["admin"],
+    },
+    {
+        label: "SLA Configuration",
+        path: "/admin/sla",
+        roles: ["admin"],
+    },
 ];
