@@ -13,6 +13,9 @@ import TicketDetailPage from "@/pages/tickets/TicketDetailPage";
 import AgentQueuePage from "@/pages/agent/AgentQueuePage";
 
 import AdminReportsPage from "@/pages/admin/AdminReportsPage";
+import AdminUsersPage from "@/pages/admin/AdminUsersPage";
+import AdminCategoriesPage from "@/pages/admin/AdminCategoriesPage";
+import AdminSlaPage from "@/pages/admin/AdminSlaPage";
 
 import UnauthorizedPage from "@/pages/errors/UnauthorizedPage";
 import NotFoundPage from "@/pages/errors/NotFoundPage";
@@ -50,15 +53,23 @@ export default function App() {
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
-            <Route
-                path="/profile"
-                element={<ProfilePage />}
-            />
-            
+
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
                 <Route element={<AppLayout />}>
                     <Route path="/" element={<HomeRedirect />} />
+
+                    {/* Ticket Detail — accessible to ALL authenticated roles */}
+                    <Route
+                        path="/tickets/:id"
+                        element={<TicketDetailPage />}
+                    />
+
+                    {/* Profile — accessible to all authenticated roles */}
+                    <Route
+                        path="/profile"
+                        element={<ProfilePage />}
+                    />
 
                     {/* Customer */}
                     <Route element={<ProtectedRoute allowedRoles={["customer"]} />}>
@@ -75,11 +86,6 @@ export default function App() {
                         <Route
                             path="/tickets/create"
                             element={<CreateTicketPage />}
-                        />
-
-                        <Route
-                            path="/tickets/:id"
-                            element={<TicketDetailPage />}
                         />
                     </Route>
 
@@ -104,6 +110,18 @@ export default function App() {
                         <Route
                             path="/admin/reports"
                             element={<AdminReportsPage />}
+                        />
+                        <Route
+                            path="/admin/users"
+                            element={<AdminUsersPage />}
+                        />
+                        <Route
+                            path="/admin/categories"
+                            element={<AdminCategoriesPage />}
+                        />
+                        <Route
+                            path="/admin/sla"
+                            element={<AdminSlaPage />}
                         />
                     </Route>
                 </Route>
