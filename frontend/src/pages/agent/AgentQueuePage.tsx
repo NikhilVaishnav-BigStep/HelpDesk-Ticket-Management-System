@@ -4,6 +4,7 @@ import { getTickets } from "@/api/ticketApi";
 import type { GetTicketsParams, PaginatedTickets } from "@/api/ticketApi";
 
 import { useDebounce } from "@/hooks/useDebounce";
+import { useSocket } from "@/hooks/useSocket";
 
 import Alert from "@/components/common/Alert";
 import Spinner from "@/components/common/Spinner";
@@ -24,6 +25,8 @@ const INITIAL_FILTERS: TicketFilters = {
 };
 
 export default function AgentQueuePage() {
+    const { socket } = useSocket();
+
     const [filters, setFilters] = useState<TicketFilters>(INITIAL_FILTERS);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
@@ -80,6 +83,19 @@ export default function AgentQueuePage() {
     useEffect(() => {
         loadTickets();
     }, [loadTickets]);
+
+    // Live Socket.IO queue updates
+    useEffect(() => {
+        const handleQueueUpdated = () => {
+            loadTickets();
+        };
+
+        socket.on("queue_updated", handleQueueUpdated);
+
+        return () => {
+            socket.off("queue_updated", handleQueueUpdated);
+        };
+    }, [loadTickets, socket]);
 
     // Reset to page 1 when filters change
     useEffect(() => {

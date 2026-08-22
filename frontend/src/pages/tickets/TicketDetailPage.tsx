@@ -11,6 +11,7 @@ import { getTicketTimeline } from "@/api/timelineApi";
 import { getUsers } from "@/api/userApi";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useSocket } from "@/hooks/useSocket";
 
 import TicketTimeline from "@/components/tickets/TicketTimeline";
 import ChatInputBar from "@/components/tickets/ChatInputBar";
@@ -51,6 +52,7 @@ const STATUS_LABELS: Record<TicketStatus, string> = {
 export default function TicketDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { user } = useAuth();
+    const { socket, joinTicket, leaveTicket } = useSocket();
 
     const [ticket, setTicket] = useState<Ticket | null>(null);
     const [timeline, setTimeline] = useState<TicketTimelineData | null>(null);
@@ -121,6 +123,31 @@ export default function TicketDetailPage() {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    // ── Real-time Socket.IO subscriptions ──────────────────
+    useEffect(() => {
+        if (!id) return;
+
+        joinTicket(id);
+
+        const handleRealtimeUpdate = () => {
+            loadTimeline();
+            loadTicket();
+        };
+
+        socket.on("new_comment", handleRealtimeUpdate);
+        socket.on("new_attachment", handleRealtimeUpdate);
+        socket.on("status_changed", handleRealtimeUpdate);
+        socket.on("ticket_assigned", handleRealtimeUpdate);
+
+        return () => {
+            leaveTicket(id);
+            socket.off("new_comment", handleRealtimeUpdate);
+            socket.off("new_attachment", handleRealtimeUpdate);
+            socket.off("status_changed", handleRealtimeUpdate);
+            socket.off("ticket_assigned", handleRealtimeUpdate);
+        };
+    }, [id, joinTicket, leaveTicket, loadTicket, loadTimeline, socket]);
 
     // Load agents for assignee dropdown (ADMIN ONLY because GET /users requires admin role)
     useEffect(() => {

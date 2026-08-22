@@ -6,6 +6,7 @@ import {
 } from "../services/attachment.service.js";
 import { sendSuccess } from "../utils/response.js";
 import type { UserRole } from "../models/User.js";
+import { notifyTicketEvent } from "../socket/socketServer.js";
 
 export const uploadAttachmentController = async (
     req: Request,
@@ -19,6 +20,8 @@ export const uploadAttachmentController = async (
             role: req.user!.role as UserRole,
             file: req.file!,
         });
+
+        notifyTicketEvent(String(req.params.id), "new_attachment", attachment);
 
         return sendSuccess(
             res,
