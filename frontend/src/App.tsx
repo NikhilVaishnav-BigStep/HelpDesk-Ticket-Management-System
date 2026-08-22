@@ -7,7 +7,7 @@ import RegisterPage from "@/pages/auth/RegisterPage";
 
 import CustomerDashboardPage from "@/pages/customer/CustomerDashboardPage";
 
-import CreateTicketPage from "@/pages/tickets/CreateTicketPage";
+import CreateTicketPage from "@/pages/customer/CreateTicketPage";
 import TicketDetailPage from "@/pages/tickets/TicketDetailPage";
 
 import AgentQueuePage from "@/pages/agent/AgentQueuePage";
@@ -68,16 +68,20 @@ export default function App() {
                         />
 
                         <Route
+                            path="/customer/tickets/new"
+                            element={<CreateTicketPage />}
+                        />
+
+                        <Route
                             path="/tickets/create"
                             element={<CreateTicketPage />}
                         />
-                    </Route>
 
-                    {/* All authenticated users */}
-                    <Route
-                        path="/tickets/:id"
-                        element={<TicketDetailPage />}
-                    />
+                        <Route
+                            path="/tickets/:id"
+                            element={<TicketDetailPage />}
+                        />
+                    </Route>
 
                     {/* Agent / Admin */}
                     <Route
