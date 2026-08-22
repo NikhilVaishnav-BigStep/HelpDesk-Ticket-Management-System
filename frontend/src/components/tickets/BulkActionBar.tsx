@@ -7,6 +7,7 @@ import Alert from "@/components/common/Alert";
 
 import { bulkAssignTickets, bulkChangeStatus } from "@/api/ticketApi";
 import { getUsers } from "@/api/userApi";
+import { useAuth } from "@/hooks/useAuth";
 
 import type { User } from "@/types/user.types";
 import type { TicketStatus } from "@/types/ticket.types";
@@ -23,6 +24,8 @@ export default function BulkActionBar({
     onClearSelection,
     onActionComplete,
 }: BulkActionBarProps) {
+    const { user } = useAuth();
+    const isAdmin = user?.role === "admin";
     const count = selectedIds.size;
 
     const [showAssignModal, setShowAssignModal] = useState(false);
@@ -36,14 +39,13 @@ export default function BulkActionBar({
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    // Load agents for the assign modal
+    // Load agents for the assign modal (ADMIN ONLY because GET /users is admin only)
     useEffect(() => {
-        if (!showAssignModal) return;
+        if (!showAssignModal || !isAdmin) return;
 
         async function loadAgents() {
             try {
                 const data = await getUsers({ role: "agent", limit: 100 });
-                // Also fetch admins
                 const adminData = await getUsers({ role: "admin", limit: 100 });
                 setAgents([...data.users, ...adminData.users]);
             } catch {
@@ -52,10 +54,11 @@ export default function BulkActionBar({
         }
 
         loadAgents();
-    }, [showAssignModal]);
+    }, [showAssignModal, isAdmin]);
 
-    async function handleBulkAssign() {
-        if (!selectedAgent) {
+    async function handleBulkAssign(targetAgentId?: string) {
+        const agentToAssign = targetAgentId || selectedAgent;
+        if (!agentToAssign) {
             setError("Please select an agent to assign.");
             return;
         }
@@ -66,7 +69,7 @@ export default function BulkActionBar({
 
             const result = await bulkAssignTickets(
                 Array.from(selectedIds),
-                selectedAgent
+                agentToAssign
             );
 
             setSuccess(
@@ -115,9 +118,7 @@ export default function BulkActionBar({
     return (
         <>
             {/* Success banner */}
-            {success && (
-                <Alert variant="success">{success}</Alert>
-            )}
+            {success && <Alert variant="success">{success}</Alert>}
 
             {/* Bar */}
             <div className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3">
@@ -126,17 +127,29 @@ export default function BulkActionBar({
                 </span>
 
                 <div className="flex items-center gap-2">
-                    <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => {
-                            setError(null);
-                            setSuccess(null);
-                            setShowAssignModal(true);
-                        }}
-                    >
-                        Bulk Assign
-                    </Button>
+                    {isAdmin ? (
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => {
+                                setError(null);
+                                setSuccess(null);
+                                setShowAssignModal(true);
+                            }}
+                        >
+                            Bulk Assign
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            loading={isSubmitting}
+                            disabled={isSubmitting || !user?._id}
+                            onClick={() => handleBulkAssign(user?._id)}
+                        >
+                            Bulk Assign to Me
+                        </Button>
+                    )}
 
                     <Button
                         variant="outline"
@@ -160,64 +173,66 @@ export default function BulkActionBar({
                 </div>
             </div>
 
-            {/* Bulk Assign Modal */}
-            <Modal
-                isOpen={showAssignModal}
-                onClose={() => {
-                    setShowAssignModal(false);
-                    setError(null);
-                }}
-                title="Bulk Assign Tickets"
-                footer={
-                    <>
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setShowAssignModal(false);
-                                setError(null);
-                            }}
-                            disabled={isSubmitting}
+            {/* Bulk Assign Modal (Admin only) */}
+            {isAdmin && (
+                <Modal
+                    isOpen={showAssignModal}
+                    onClose={() => {
+                        setShowAssignModal(false);
+                        setError(null);
+                    }}
+                    title="Bulk Assign Tickets"
+                    footer={
+                        <>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setShowAssignModal(false);
+                                    setError(null);
+                                }}
+                                disabled={isSubmitting}
+                            >
+                                Cancel
+                            </Button>
+
+                            <Button
+                                variant="primary"
+                                onClick={() => handleBulkAssign()}
+                                loading={isSubmitting}
+                                disabled={!selectedAgent}
+                            >
+                                Assign {count} Ticket{count !== 1 ? "s" : ""}
+                            </Button>
+                        </>
+                    }
+                >
+                    <div className="space-y-4">
+                        {error && <Alert variant="error">{error}</Alert>}
+
+                        <p className="text-sm text-slate-600">
+                            Select an agent to assign{" "}
+                            <strong>
+                                {count} ticket{count !== 1 ? "s" : ""}
+                            </strong>{" "}
+                            to.
+                        </p>
+
+                        <Select
+                            id="bulk-assign-agent"
+                            label="Assign to"
+                            value={selectedAgent}
+                            onChange={(e) => setSelectedAgent(e.target.value)}
                         >
-                            Cancel
-                        </Button>
-
-                        <Button
-                            variant="primary"
-                            onClick={handleBulkAssign}
-                            loading={isSubmitting}
-                            disabled={!selectedAgent}
-                        >
-                            Assign {count} Ticket{count !== 1 ? "s" : ""}
-                        </Button>
-                    </>
-                }
-            >
-                <div className="space-y-4">
-                    {error && <Alert variant="error">{error}</Alert>}
-
-                    <p className="text-sm text-slate-600">
-                        Select an agent to assign{" "}
-                        <strong>
-                            {count} ticket{count !== 1 ? "s" : ""}
-                        </strong>{" "}
-                        to.
-                    </p>
-
-                    <Select
-                        id="bulk-assign-agent"
-                        label="Assign to"
-                        value={selectedAgent}
-                        onChange={(e) => setSelectedAgent(e.target.value)}
-                    >
-                        <option value="">Select an agent...</option>
-                        {agents.map((agent) => (
-                            <option key={agent._id} value={agent._id}>
-                                {agent.name} ({agent.role})
-                            </option>
-                        ))}
-                    </Select>
-                </div>
-            </Modal>
+                            <option value="">Select an agent...</option>
+                            {agents.map((agent) => (
+                                <option key={agent._id} value={agent._id}>
+                                    {agent.name} ({agent.role})
+                                </option>
+                            ))}
+                        </Select>
+                    </div>
+                </Modal>
+            )}
 
             {/* Bulk Status Change Modal */}
             <Modal

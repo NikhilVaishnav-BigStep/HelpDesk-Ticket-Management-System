@@ -13,8 +13,7 @@ import { getUsers } from "@/api/userApi";
 import { useAuth } from "@/hooks/useAuth";
 
 import TicketTimeline from "@/components/tickets/TicketTimeline";
-import CommentBox from "@/components/tickets/CommentBox";
-import AttachmentList from "@/components/tickets/AttachmentList";
+import ChatInputBar from "@/components/tickets/ChatInputBar";
 
 import Alert from "@/components/common/Alert";
 import Badge from "@/components/common/Badge";
@@ -23,7 +22,6 @@ import Select from "@/components/common/Select";
 import Spinner from "@/components/common/Spinner";
 
 import type {
-    Attachment,
     Ticket,
     TicketStatus,
     TicketTimeline as TicketTimelineData,
@@ -55,8 +53,7 @@ export default function TicketDetailPage() {
     const { user } = useAuth();
 
     const [ticket, setTicket] = useState<Ticket | null>(null);
-    const [timeline, setTimeline] =
-        useState<TicketTimelineData | null>(null);
+    const [timeline, setTimeline] = useState<TicketTimelineData | null>(null);
 
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -70,7 +67,7 @@ export default function TicketDetailPage() {
 
     const isSupportStaff =
         user?.role === "agent" || user?.role === "admin";
-
+    const isAdmin = user?.role === "admin";
     const isCustomer = user?.role === "customer";
 
     // ── Data loading ──────────────────────────────────────
@@ -115,10 +112,7 @@ export default function TicketDetailPage() {
             setIsLoading(true);
             setError(null);
 
-            await Promise.all([
-                loadTicket(),
-                loadTimeline(),
-            ]);
+            await Promise.all([loadTicket(), loadTimeline()]);
         } finally {
             setIsLoading(false);
         }
@@ -128,9 +122,9 @@ export default function TicketDetailPage() {
         loadData();
     }, [loadData]);
 
-    // Load agents for assignee dropdown
+    // Load agents for assignee dropdown (ADMIN ONLY because GET /users requires admin role)
     useEffect(() => {
-        if (!isSupportStaff) return;
+        if (!isAdmin) return;
 
         async function loadAgents() {
             try {
@@ -144,12 +138,12 @@ export default function TicketDetailPage() {
                 });
                 setAgents([...agentData.users, ...adminData.users]);
             } catch {
-                // Agent list unavailable — dropdown will be empty
+                // Agent list unavailable
             }
         }
 
         loadAgents();
-    }, [isSupportStaff]);
+    }, [isAdmin]);
 
     const handleActivityAdded = useCallback(async () => {
         await loadTimeline();
@@ -234,9 +228,7 @@ export default function TicketDetailPage() {
     if (error && !ticket) {
         return (
             <div className="space-y-4">
-                <Alert variant="error">
-                    {error}
-                </Alert>
+                <Alert variant="error">{error}</Alert>
 
                 <Link
                     to={isCustomer ? "/customer" : "/agent/queue"}
@@ -249,63 +241,15 @@ export default function TicketDetailPage() {
     }
 
     if (!ticket || !id) {
-        return (
-            <Alert variant="error">
-                Ticket could not be found.
-            </Alert>
-        );
+        return <Alert variant="error">Ticket could not be found.</Alert>;
     }
-
-    const attachments: Attachment[] =
-        timeline?.timeline
-            .filter(
-                (entry) =>
-                    entry.type === "attachment"
-            )
-            .map((entry) => {
-                const data = entry.data;
-
-                return {
-                    _id:
-                        typeof data._id === "string"
-                            ? data._id
-                            : typeof data.id === "string"
-                                ? data.id
-                                : entry.id,
-
-                    ticketId: ticket._id,
-
-                    uploadedBy:
-                        typeof data.uploadedBy === "string"
-                            ? data.uploadedBy
-                            : "",
-
-                    fileName:
-                        typeof data.fileName === "string"
-                            ? data.fileName
-                            : "Attachment",
-
-                    storageKey:
-                        typeof data.storageKey === "string"
-                            ? data.storageKey
-                            : "",
-
-                    mimeType:
-                        typeof data.mimeType === "string"
-                            ? data.mimeType
-                            : "application/octet-stream",
-
-                    size:
-                        typeof data.size === "number"
-                            ? data.size
-                            : 0,
-
-                    createdAt: entry.createdAt,
-                };
-            }) ?? [];
 
     const validNextStatuses = VALID_TRANSITIONS[ticket.status] ?? [];
     const isClosed = ticket.status === "closed";
+    const isAssignedToCurrentAgent =
+        typeof ticket.assigneeId === "string"
+            ? ticket.assigneeId === user?._id
+            : (ticket.assigneeId as unknown as { _id: string })?._id === user?._id;
 
     return (
         <div className="mx-auto max-w-5xl space-y-6">
@@ -313,11 +257,7 @@ export default function TicketDetailPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <Link
-                        to={
-                            isCustomer
-                                ? "/customer"
-                                : "/agent/queue"
-                        }
+                        to={isCustomer ? "/customer" : "/agent/queue"}
                         className="mb-3 inline-flex text-sm font-medium text-blue-600 hover:text-blue-700"
                     >
                         ← Back to tickets
@@ -334,36 +274,21 @@ export default function TicketDetailPage() {
 
                 <div className="flex flex-wrap gap-2">
                     <Badge variant={ticket.status}>
-                        {ticket.status.replaceAll(
-                            "_",
-                            " "
-                        )}
+                        {ticket.status.replaceAll("_", " ")}
                     </Badge>
 
-                    <Badge
-                        variant={ticket.priority}
-                    >
-                        {ticket.priority}
-                    </Badge>
+                    <Badge variant={ticket.priority}>{ticket.priority}</Badge>
 
                     {ticket.breached && (
-                        <Badge variant="breach">
-                            SLA Breached
-                        </Badge>
+                        <Badge variant="breach">SLA Breached</Badge>
                     )}
                 </div>
             </div>
 
             {/* Feedback banners */}
-            {actionSuccess && (
-                <Alert variant="success">{actionSuccess}</Alert>
-            )}
+            {actionSuccess && <Alert variant="success">{actionSuccess}</Alert>}
 
-            {error && (
-                <Alert variant="error">
-                    {error}
-                </Alert>
-            )}
+            {error && <Alert variant="error">{error}</Alert>}
 
             {/* Ticket information */}
             <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -385,9 +310,7 @@ export default function TicketDetailPage() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-700">
-                                {formatDateTime(
-                                    ticket.createdAt
-                                )}
+                                {formatDateTime(ticket.createdAt)}
                             </p>
                         </div>
 
@@ -397,9 +320,7 @@ export default function TicketDetailPage() {
                             </p>
 
                             <p className="mt-1 text-sm text-slate-700">
-                                {formatDateTime(
-                                    ticket.updatedAt
-                                )}
+                                {formatDateTime(ticket.updatedAt)}
                             </p>
                         </div>
 
@@ -410,9 +331,7 @@ export default function TicketDetailPage() {
                                 </p>
 
                                 <p className="mt-1 text-sm text-slate-700">
-                                    {formatDateTime(
-                                        ticket.responseDueAt
-                                    )}
+                                    {formatDateTime(ticket.responseDueAt)}
                                 </p>
                             </div>
                         )}
@@ -424,9 +343,7 @@ export default function TicketDetailPage() {
                                 </p>
 
                                 <p className="mt-1 text-sm text-slate-700">
-                                    {formatDateTime(
-                                        ticket.resolutionDueAt
-                                    )}
+                                    {formatDateTime(ticket.resolutionDueAt)}
                                 </p>
                             </div>
                         )}
@@ -442,27 +359,49 @@ export default function TicketDetailPage() {
                     </h2>
 
                     <div className="grid gap-6 md:grid-cols-2">
-                        {/* Assign */}
+                        {/* Assign: Admin sees dropdown, Agent sees "Assign to Me" */}
                         <div>
-                            <Select
-                                id="assignee-select"
-                                label="Assign to Agent"
-                                value={ticket.assigneeId ?? ""}
-                                onChange={(e) =>
-                                    handleAssign(e.target.value)
-                                }
-                                disabled={isAssigning || isClosed}
-                            >
-                                <option value="">Unassigned</option>
-                                {agents.map((agent) => (
-                                    <option
-                                        key={agent._id}
-                                        value={agent._id}
-                                    >
-                                        {agent.name} ({agent.role})
-                                    </option>
-                                ))}
-                            </Select>
+                            {isAdmin ? (
+                                <Select
+                                    id="assignee-select"
+                                    label="Assign to Agent"
+                                    value={
+                                        typeof ticket.assigneeId === "string"
+                                            ? ticket.assigneeId
+                                            : (ticket.assigneeId as unknown as { _id: string })?._id ?? ""
+                                    }
+                                    onChange={(e) => handleAssign(e.target.value)}
+                                    disabled={isAssigning || isClosed}
+                                >
+                                    <option value="">Unassigned</option>
+                                    {agents.map((agent) => (
+                                        <option key={agent._id} value={agent._id}>
+                                            {agent.name} ({agent.role})
+                                        </option>
+                                    ))}
+                                </Select>
+                            ) : (
+                                <div>
+                                    <p className="mb-1.5 text-sm font-medium text-slate-700">
+                                        Assignment
+                                    </p>
+                                    {isAssignedToCurrentAgent ? (
+                                        <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 border border-emerald-200">
+                                            ✓ Assigned to You
+                                        </div>
+                                    ) : (
+                                        <Button
+                                            variant="primary"
+                                            size="sm"
+                                            onClick={() => handleAssign(user?._id ?? "")}
+                                            loading={isAssigning}
+                                            disabled={isAssigning || isClosed || !user?._id}
+                                        >
+                                            Assign to Me
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
 
                             {isAssigning && (
                                 <p className="mt-1 text-xs text-slate-500">
@@ -515,8 +454,7 @@ export default function TicketDetailPage() {
                                                             isChangingStatus
                                                         }
                                                     >
-                                                        →{" "}
-                                                        {STATUS_LABELS[status]}
+                                                        → {STATUS_LABELS[status]}
                                                     </Button>
                                                 )
                                             )}
@@ -534,31 +472,35 @@ export default function TicketDetailPage() {
                 </section>
             )}
 
-            {/* Timeline */}
-            <TicketTimeline
-                timeline={timeline?.timeline ?? []}
-            />
+            {/* Unified Conversation & History Chat Section */}
+            <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col">
+                <div className="border-b border-slate-200 px-5 py-4 bg-slate-50/50 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-base font-semibold text-slate-900">
+                            Conversation & History
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                            Activity feed, comments, and attachments
+                        </p>
+                    </div>
 
-            {/* Attachments */}
-            <AttachmentList
-                ticketId={ticket._id}
-                attachments={attachments}
-                onAttachmentUploaded={
-                    handleActivityAdded
-                }
-            />
+                    <span className="text-xs font-medium text-slate-500">
+                        {timeline?.timeline.length ?? 0} total entries
+                    </span>
+                </div>
 
-            {/* Comment box */}
-            {!(
-                ticket.status === "closed"
-            ) && (
-                <CommentBox
+                {/* Timeline Messages Stream */}
+                <div className="max-h-[600px] min-h-[300px] overflow-y-auto bg-slate-50/30">
+                    <TicketTimeline timeline={timeline?.timeline ?? []} />
+                </div>
+
+                {/* Sticky Bottom Chat Input Bar with Attachment Paperclip */}
+                <ChatInputBar
                     ticketId={ticket._id}
-                    onCommentAdded={
-                        handleActivityAdded
-                    }
+                    isClosed={isClosed}
+                    onActivityAdded={handleActivityAdded}
                 />
-            )}
+            </section>
         </div>
     );
 }
