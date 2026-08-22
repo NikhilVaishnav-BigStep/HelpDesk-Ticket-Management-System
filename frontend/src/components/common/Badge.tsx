@@ -11,6 +11,7 @@ type BadgeVariant =
     | "high"
     | "urgent"
     | "breach"
+    | "warning"
     | "default";
 
 interface BadgeProps {
@@ -30,6 +31,7 @@ const variantClasses: Record<BadgeVariant, string> = {
     high: "bg-orange-50 text-orange-700 ring-orange-600/20",
     urgent: "bg-red-50 text-red-700 ring-red-600/20",
     breach: "bg-red-100 text-red-800 ring-red-600/20",
+    warning: "bg-amber-50 text-amber-700 ring-amber-600/20",
     default: "bg-slate-100 text-slate-700 ring-slate-500/20",
 };
 

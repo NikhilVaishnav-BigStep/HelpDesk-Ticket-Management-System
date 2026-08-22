@@ -77,7 +77,7 @@ export interface TimelineEntry {
     type: TimelineEntryType;
     createdAt: string;
     actor: object | null;
-    data: object;
+    data: Record<string, unknown>;
 }
 
 export interface TicketTimeline {
