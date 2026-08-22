@@ -1,6 +1,12 @@
 import client from "./client";
 import type { Attachment } from "@/types/ticket.types";
 
+interface ApiResponse<T> {
+    success: boolean;
+    message: string;
+    data: T;
+}
+
 export async function uploadAttachment(
     ticketId: string,
     file: File
@@ -9,13 +15,23 @@ export async function uploadAttachment(
 
     formData.append("file", file);
 
-    return client.post(`/tickets/${ticketId}/attachments`, formData);
+    const response = await client.post<ApiResponse<Attachment>>(
+        `/tickets/${ticketId}/attachments`,
+        formData
+    );
+
+    return response.data.data;
 }
 
 export async function downloadAttachment(
     attachmentId: string
 ): Promise<Blob> {
-    return client.get(`/attachments/${attachmentId}/download`, {
-        responseType: "blob",
-    });
+    const response = await client.get<Blob>(
+        `/attachments/${attachmentId}/download`,
+        {
+            responseType: "blob",
+        }
+    );
+
+    return response.data;
 }
