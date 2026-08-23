@@ -19,6 +19,7 @@ import {
 import { getTicketTimeline } from "../services/timeline.service.js";
 import { sendSuccess } from "../utils/response.js";
 import type { UserRole } from "../models/User.js";
+import { notifyTicketEvent } from "../socket/socketServer.js";
 
 export const createTicket = async (
     req: Request,
@@ -142,6 +143,8 @@ export const assignTicketController = async (
             req.user!.userId,
         );
 
+        notifyTicketEvent(String(req.params.id), "ticket_assigned", ticket);
+
         return sendSuccess(res, ticket, "Ticket assigned successfully", 200);
     } catch (error) {
         next(error);
@@ -159,6 +162,8 @@ export const changeStatusController = async (
             req.body.status,
             req.user!.userId,
         );
+
+        notifyTicketEvent(String(req.params.id), "status_changed", ticket);
 
         return sendSuccess(
             res,
@@ -184,6 +189,8 @@ export const addCommentController = async (
             message: req.body.message,
             type: req.body.type,
         });
+
+        notifyTicketEvent(String(req.params.id), "new_comment", comment);
 
         return sendSuccess(
             res,
@@ -251,6 +258,8 @@ export const reopenTicketController = async (
             String(req.params.id),
             req.user!.userId,
         );
+
+        notifyTicketEvent(String(req.params.id), "status_changed", ticket);
 
         return sendSuccess(res, ticket, "Ticket reopened successfully", 200);
     } catch (error) {

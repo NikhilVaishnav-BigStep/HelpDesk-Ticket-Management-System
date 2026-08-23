@@ -106,6 +106,7 @@ export const loginUser = async ({
     return {
         token,
         user: {
+            _id: userId,
             id: userId,
             name: user.name,
             email: user.email,

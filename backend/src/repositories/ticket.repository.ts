@@ -1,5 +1,5 @@
 import { Ticket, type ITicket } from "../models/Ticket.js";
-import type { Types } from "mongoose";
+import { Types } from "mongoose";
 
 export const createTicket = async (
     ticketData: Partial<ITicket>,
@@ -10,13 +10,20 @@ export const createTicket = async (
 export const findTicketById = async (
     ticketId: string,
 ): Promise<ITicket | null> => {
-    return Ticket.findById(ticketId);
+    return Ticket.findById(ticketId)
+        .populate("customerId", "_id name email role")
+        .populate("assigneeId", "_id name email role")
+        .populate("categoryId", "_id name status");
 };
 
 export const findTicketsByCustomerId = async (
     customerId: Types.ObjectId,
 ): Promise<ITicket[]> => {
-    return Ticket.find({ customerId }).sort({ createdAt: -1 });
+    return Ticket.find({ customerId })
+        .populate("customerId", "_id name email role")
+        .populate("assigneeId", "_id name email role")
+        .populate("categoryId", "_id name status")
+        .sort({ createdAt: -1 });
 };
 
 export const updateTicketById = async (
@@ -26,7 +33,10 @@ export const updateTicketById = async (
     return Ticket.findByIdAndUpdate(ticketId, updateData, {
         new: true,
         runValidators: true,
-    });
+    })
+        .populate("customerId", "_id name email role")
+        .populate("assigneeId", "_id name email role")
+        .populate("categoryId", "_id name status");
 };
 
 export interface TicketFilter {
@@ -40,6 +50,8 @@ export interface TicketFilter {
     search?: string;
     sortBy?: "createdAt" | "updatedAt" | "priority" | "status";
     order?: "asc" | "desc";
+    agentScoped?: boolean;
+    agentUserId?: string;
 }
 
 const escapeRegex = (input: string): string =>
@@ -61,15 +73,33 @@ export const findTickets = async (
     }
 
     if (filters.assigneeId) {
-        query.assigneeId = filters.assigneeId;
+        if (filters.assigneeId === "unassigned" || filters.assigneeId === "null") {
+            query.assigneeId = null;
+            // Unassigned tickets listed for agents should not include closed tickets
+            if (!filters.status) {
+                query.status = { $ne: "closed" };
+            }
+        } else if (Types.ObjectId.isValid(filters.assigneeId)) {
+            query.assigneeId = new Types.ObjectId(filters.assigneeId);
+        } else {
+            query.assigneeId = filters.assigneeId;
+        }
     }
 
-    if (filters.categoryId) {
-        query.categoryId = filters.categoryId;
+    if (filters.agentScoped && filters.agentUserId && Types.ObjectId.isValid(filters.agentUserId)) {
+        const agentOid = new Types.ObjectId(filters.agentUserId);
+        query.$or = [
+            { assigneeId: agentOid },
+            { assigneeId: null, status: { $ne: "closed" } },
+        ];
     }
 
-    if (filters.customerId) {
-        query.customerId = filters.customerId;
+    if (filters.categoryId && Types.ObjectId.isValid(filters.categoryId)) {
+        query.categoryId = new Types.ObjectId(filters.categoryId);
+    }
+
+    if (filters.customerId && Types.ObjectId.isValid(filters.customerId)) {
+        query.customerId = new Types.ObjectId(filters.customerId);
     }
 
     if (filters.startDate || filters.endDate) {
@@ -86,7 +116,17 @@ export const findTickets = async (
     if (filters.search) {
         const safe = escapeRegex(filters.search.trim());
         const re = new RegExp(safe, "i");
-        query.$or = [{ subject: re }, { description: re }];
+        const searchOr = [{ subject: re }, { description: re }];
+
+        if (query.$or) {
+            query.$and = [
+                { $or: query.$or },
+                { $or: searchOr },
+            ];
+            delete query.$or;
+        } else {
+            query.$or = searchOr;
+        }
     }
 
     const sortField = filters.sortBy ?? "createdAt";
@@ -95,6 +135,9 @@ export const findTickets = async (
 
     const [tickets, total] = await Promise.all([
         Ticket.find(query)
+            .populate("customerId", "_id name email role")
+            .populate("assigneeId", "_id name email role")
+            .populate("categoryId", "_id name status")
             .sort(sort)
             .skip(skip)
             .limit(limit),

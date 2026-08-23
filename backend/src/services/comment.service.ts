@@ -6,6 +6,7 @@ import { AppException } from "../exceptions/AppException.js";
 import type { UserRole } from "../models/User.js";
 import { findHistoryByTicketId } from "../repositories/ticketHistory.repository.js";
 import { Types } from "mongoose";
+import { getDocId } from "../utils/entityHelpers.js";
 
 export const addCommentToTicket = async ({
     ticketId,
@@ -33,7 +34,7 @@ export const addCommentToTicket = async ({
         throw new AppException("Ticket not found", 404);
     }
 
-    if (role === "customer" && ticket.customerId.toString() !== authorId) {
+    if (role === "customer" && getDocId(ticket.customerId) !== authorId) {
         throw new AppException(
             "You are not authorized to comment on this ticket",
             403,
@@ -84,7 +85,7 @@ export const getCommentsForTicket = async ({
     }
 
     if (role === "customer") {
-        if (ticket.customerId.toString() !== userId) {
+        if (getDocId(ticket.customerId) !== userId) {
             throw new AppException(
                 "You are not authorized to view this ticket",
                 403,

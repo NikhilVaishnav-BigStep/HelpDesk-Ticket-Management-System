@@ -133,7 +133,7 @@ export const updateTicketSchema = z.object({
 
 export const assignTicketSchema = z.object({
     body: z.object({
-        assigneeId: z.string().min(1, "Assignee ID is required"),
+        assigneeId: z.string().nullable().optional(),
     }),
 });
 
