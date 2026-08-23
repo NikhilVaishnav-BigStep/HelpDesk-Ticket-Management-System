@@ -6,6 +6,8 @@ import {
 import { SLA } from "../../src/models/SLA.js";
 import { Ticket, TicketPriority, TicketStatus } from "../../src/models/Ticket.js";
 import { TicketHistory } from "../../src/models/TicketHistory.js";
+import { User } from "../../src/models/User.js";
+import { Category } from "../../src/models/Category.js";
 import { Types } from "mongoose";
 import * as slaService from "../../src/services/sla.service.js";
 

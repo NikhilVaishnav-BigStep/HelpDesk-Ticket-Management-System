@@ -159,6 +159,7 @@ export default function CreateTicketPage() {
             >
                 <div className="space-y-5">
                     <Input
+                        id="ticket-subject"
                         label="Subject"
                         name="subject"
                         value={formData.subject}
@@ -170,6 +171,7 @@ export default function CreateTicketPage() {
                     />
 
                     <Textarea
+                        id="ticket-description"
                         label="Description"
                         name="description"
                         value={formData.description}
@@ -181,6 +183,7 @@ export default function CreateTicketPage() {
                     />
 
                     <Select
+                        id="ticket-priority"
                         label="Priority"
                         name="priority"
                         value={formData.priority}
@@ -200,6 +203,7 @@ export default function CreateTicketPage() {
                         </div>
                     ) : (
                         <Select
+                            id="ticket-category"
                             label="Category"
                             name="categoryId"
                             value={formData.categoryId}

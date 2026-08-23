@@ -1,6 +1,15 @@
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 
+// Ensure all models are registered in mongoose for population & lifecycle
+import "../../src/models/User.js";
+import "../../src/models/Ticket.js";
+import "../../src/models/Category.js";
+import "../../src/models/SLA.js";
+import "../../src/models/Comment.js";
+import "../../src/models/Attachment.js";
+import "../../src/models/TicketHistory.js";
+
 let mongo: MongoMemoryServer | null = null;
 
 export const connectTestDb = async (): Promise<void> => {

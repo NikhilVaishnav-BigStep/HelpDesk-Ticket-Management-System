@@ -83,7 +83,7 @@ const seedSlas = async (): Promise<void> => {
         await SLA.findOneAndUpdate(
             { priority: sla.priority },
             { $set: sla },
-            { upsert: true, new: true, setDefaultsOnInsert: true },
+            { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
         );
     }
     logger.info(`Seeded ${SLA_SEED.length} SLA policies`);
@@ -95,7 +95,7 @@ const seedCategories = async (): Promise<Map<string, Types.ObjectId>> => {
         const doc = await Category.findOneAndUpdate(
             { name: c.name },
             { $set: c },
-            { upsert: true, new: true, setDefaultsOnInsert: true },
+            { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
         );
         map.set(c.name, doc!._id as Types.ObjectId);
     }
@@ -119,7 +119,7 @@ const seedUsers = async (): Promise<Map<string, Types.ObjectId>> => {
                     deletedAt: null,
                 },
             },
-            { upsert: true, new: true, setDefaultsOnInsert: true },
+            { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
         );
         map.set(u.email, doc!._id as Types.ObjectId);
     }
