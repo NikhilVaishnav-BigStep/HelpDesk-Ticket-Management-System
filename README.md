@@ -8,53 +8,6 @@ A full-stack, enterprise-grade **HelpDesk Ticket Management System** featuring m
 
 ![System Architecture Diagram](docs/images/architecture_diagram.jpg)
 
-### Architecture Overview (Mermaid)
-
-```mermaid
-flowchart TD
-    subgraph ClientTier ["1. Client Tier (Frontend — React 19 + Vite 8 + TailwindCSS 4)"]
-        CP["Customer Portal\n• Ticket Submission\n• Live Chat & Attachments\n• Status Tracking"]
-        AW["Agent Workspace\n• My Assigned Queue\n• Unassigned Queue\n• Yellow Internal Notes\n• Claim / Unassign Flows"]
-        AC["Admin Console\n• User & Role Management\n• Category Administration\n• SLA Policy Config\n• Analytics & Reports"]
-    end
-
-    subgraph SecurityTier ["2. Gateway & Security Layer (Express 5 + Node.js)"]
-        JWT["JWT Authentication Guard"]
-        RBAC["RBAC Role Validator\n(Customer | Agent | Admin)"]
-        ZOD["Zod Schema Validator"]
-        MULTER["Multer File Upload Guard"]
-    end
-
-    subgraph ServiceTier ["3. Application Service Tier"]
-        AUTH_SRV["Auth & User Service"]
-        TICKET_SRV["Ticket Lifecycle Engine\n(Open -> Assigned -> In Progress -> Resolved -> Closed)"]
-        SLA_SRV["SLA Breach Tracker & Timers\n(Response & Resolution Targets)"]
-        COMMENT_SRV["Comment & Internal Note Service"]
-        CAT_SRV["Category Management Service"]
-        SOCKET_SRV["Socket.io Real-Time Room Hub\n(Live Chat & Ticket Events)"]
-        REPORT_SRV["Metrics & Analytics Engine"]
-    end
-
-    subgraph StorageTier ["4. Data & Storage Layer"]
-        MONGO[("MongoDB Database\n(Mongoose 9 ODM)")]
-        MEM_DB[("In-Memory MongoDB Server\n(Automated Testing)")]
-        FILES[("Local Storage / S3\n(Ticket Attachments)")]
-    end
-
-    CP & AW & AC -->|HTTP REST APIs| JWT
-    CP & AW & AC <-->|WebSockets (Socket.io)| SOCKET_SRV
-
-    JWT --> RBAC --> ZOD --> MULTER
-    ZOD --> AUTH_SRV & TICKET_SRV & SLA_SRV & COMMENT_SRV & CAT_SRV & REPORT_SRV
-
-    TICKET_SRV <--> SOCKET_SRV
-    COMMENT_SRV <--> SOCKET_SRV
-
-    AUTH_SRV & TICKET_SRV & SLA_SRV & COMMENT_SRV & CAT_SRV & REPORT_SRV <--> MONGO
-    AUTH_SRV & TICKET_SRV & SLA_SRV & COMMENT_SRV & CAT_SRV & REPORT_SRV -.-> MEM_DB
-    MULTER --> FILES
-```
-
 ---
 
 ## Database Schema & Entity-Relationship (ER) Diagram
