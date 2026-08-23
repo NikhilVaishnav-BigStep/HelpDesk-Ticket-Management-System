@@ -49,6 +49,33 @@ const STATUS_LABELS: Record<TicketStatus, string> = {
     closed: "Closed",
 };
 
+interface PopulatedUser {
+    _id: string;
+    name: string;
+    email: string;
+}
+
+function getPopulatedName(value: unknown): string {
+    if (!value) return "Unassigned";
+    if (typeof value === "object" && value !== null) {
+        const u = value as PopulatedUser;
+        if (typeof u.name === "string" && u.name.trim() !== "") return u.name;
+    }
+    if (typeof value === "string" && value.trim() !== "" && !value.match(/^[0-9a-fA-F]{24}$/)) {
+        return value;
+    }
+    return "Unassigned";
+}
+
+function getPopulatedId(value: unknown): string {
+    if (!value) return "";
+    if (typeof value === "object" && value !== null) {
+        return (value as PopulatedUser)._id ?? "";
+    }
+    if (typeof value === "string") return value;
+    return "";
+}
+
 export default function TicketDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { user } = useAuth();
@@ -177,10 +204,10 @@ export default function TicketDetailPage() {
         await loadTicket();
     }, [loadTimeline, loadTicket]);
 
-    // ── Assignment handler ────────────────────────────────
+    // ── Assignment / Unassignment handler ────────────────
 
     async function handleAssign(assigneeId: string) {
-        if (!ticket || !assigneeId) return;
+        if (!ticket) return;
 
         try {
             setIsAssigning(true);
@@ -189,7 +216,11 @@ export default function TicketDetailPage() {
 
             const updated = await assignTicket(ticket._id, assigneeId);
             setTicket(updated);
-            setActionSuccess("Ticket assigned successfully.");
+            if (!assigneeId) {
+                setActionSuccess("Ticket unassigned successfully.");
+            } else {
+                setActionSuccess("Ticket assigned successfully.");
+            }
             await loadTimeline();
         } catch (err) {
             setError(getErrorMessage(err));
@@ -273,10 +304,12 @@ export default function TicketDetailPage() {
 
     const validNextStatuses = VALID_TRANSITIONS[ticket.status] ?? [];
     const isClosed = ticket.status === "closed";
-    const isAssignedToCurrentAgent =
-        typeof ticket.assigneeId === "string"
-            ? ticket.assigneeId === user?._id
-            : (ticket.assigneeId as unknown as { _id: string })?._id === user?._id;
+    const currentUserId = user?._id || user?.id || "";
+    const currentAssigneeId = getPopulatedId(ticket.assigneeId);
+    const isAssignedToCurrentAgent = Boolean(
+        currentUserId && currentAssigneeId === currentUserId
+    );
+    const isUnassigned = !currentAssigneeId;
 
     return (
         <div className="mx-auto max-w-5xl space-y-6">
@@ -333,6 +366,26 @@ export default function TicketDetailPage() {
                     <div className="space-y-4">
                         <div>
                             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                                Customer
+                            </p>
+
+                            <p className="mt-1 text-sm font-medium text-slate-800">
+                                {getPopulatedName(ticket.customerId)}
+                            </p>
+                        </div>
+
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                                Assignee
+                            </p>
+
+                            <p className="mt-1 text-sm font-medium text-slate-800">
+                                {getPopulatedName(ticket.assigneeId)}
+                            </p>
+                        </div>
+
+                        <div>
+                            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                                 Created
                             </p>
 
@@ -350,30 +403,6 @@ export default function TicketDetailPage() {
                                 {formatDateTime(ticket.updatedAt)}
                             </p>
                         </div>
-
-                        {ticket.responseDueAt && (
-                            <div>
-                                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                                    Response due
-                                </p>
-
-                                <p className="mt-1 text-sm text-slate-700">
-                                    {formatDateTime(ticket.responseDueAt)}
-                                </p>
-                            </div>
-                        )}
-
-                        {ticket.resolutionDueAt && (
-                            <div>
-                                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                                    Resolution due
-                                </p>
-
-                                <p className="mt-1 text-sm text-slate-700">
-                                    {formatDateTime(ticket.resolutionDueAt)}
-                                </p>
-                            </div>
-                        )}
                     </div>
                 </div>
             </section>
@@ -386,17 +415,13 @@ export default function TicketDetailPage() {
                     </h2>
 
                     <div className="grid gap-6 md:grid-cols-2">
-                        {/* Assign: Admin sees dropdown, Agent sees "Assign to Me" */}
+                        {/* Assign: Admin sees dropdown; Agent sees "Assign to Me" or "Unassign Me" */}
                         <div>
                             {isAdmin ? (
                                 <Select
                                     id="assignee-select"
                                     label="Assign to Agent"
-                                    value={
-                                        typeof ticket.assigneeId === "string"
-                                            ? ticket.assigneeId
-                                            : (ticket.assigneeId as unknown as { _id: string })?._id ?? ""
-                                    }
+                                    value={currentAssigneeId}
                                     onChange={(e) => handleAssign(e.target.value)}
                                     disabled={isAssigning || isClosed}
                                 >
@@ -413,26 +438,45 @@ export default function TicketDetailPage() {
                                         Assignment
                                     </p>
                                     {isAssignedToCurrentAgent ? (
-                                        <div className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 border border-emerald-200">
-                                            ✓ Assigned to You
+                                        <div className="flex items-center gap-3">
+                                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 border border-emerald-200">
+                                                ✓ Assigned to You
+                                            </span>
+                                            {!isClosed && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleAssign("")}
+                                                    loading={isAssigning}
+                                                    disabled={isAssigning}
+                                                >
+                                                    Unassign Me
+                                                </Button>
+                                            )}
                                         </div>
-                                    ) : (
+                                    ) : isUnassigned ? (
                                         <Button
                                             variant="primary"
                                             size="sm"
-                                            onClick={() => handleAssign(user?._id ?? "")}
+                                            onClick={() => handleAssign(currentUserId)}
                                             loading={isAssigning}
-                                            disabled={isAssigning || isClosed || !user?._id}
+                                            disabled={isAssigning || isClosed || !currentUserId}
                                         >
                                             Assign to Me
                                         </Button>
+                                    ) : (
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-sm font-medium text-slate-700">
+                                                Assigned to {getPopulatedName(ticket.assigneeId)}
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
                             )}
 
                             {isAssigning && (
                                 <p className="mt-1 text-xs text-slate-500">
-                                    Assigning...
+                                    Updating assignment...
                                 </p>
                             )}
                         </div>

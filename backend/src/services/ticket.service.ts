@@ -58,6 +58,8 @@ export const createNewTicket = async (
     return ticket;
 };
 
+import { getDocId } from "../utils/entityHelpers.js";
+
 export const getTicketById = async (
     ticketId: string,
     userId: string,
@@ -69,8 +71,16 @@ export const getTicketById = async (
         throw new AppException("Ticket not found", 404);
     }
 
-    if (role === "customer" && ticket.customerId.toString() !== userId) {
+    if (role === "customer" && getDocId(ticket.customerId) !== userId) {
         throw new AppException("You are not authorized to access this ticket", 403);
+    }
+
+    if (role === "agent") {
+        const assigneeId = getDocId(ticket.assigneeId);
+        // Agent can only access tickets assigned to them OR unassigned tickets
+        if (assigneeId && assigneeId !== userId) {
+            throw new AppException("You are not authorized to access this ticket", 403);
+        }
     }
 
     ticket = await detectAndRecordBreach(ticket, userId);
@@ -97,13 +107,25 @@ export const getTickets = async (
 ) => {
     const skip = (page - 1) * limit;
 
-    const ticketFilters = {
+    const ticketFilters: Record<string, unknown> = {
         ...filters,
-        ...(role === "customer" ? { customerId: userId } : {}),
     };
 
+    if (role === "customer") {
+        ticketFilters.customerId = userId;
+    } else if (role === "agent") {
+        if (filters.assigneeId === "assigned" || filters.assigneeId === userId) {
+            ticketFilters.assigneeId = userId;
+        } else if (filters.assigneeId === "unassigned" || filters.assigneeId === "null") {
+            ticketFilters.assigneeId = "unassigned";
+        } else {
+            ticketFilters.agentScoped = true;
+            ticketFilters.agentUserId = userId;
+        }
+    }
+
     const { tickets, total } = await findTickets(
-        ticketFilters,
+        ticketFilters as Parameters<typeof findTickets>[0],
         skip,
         limit,
     );
@@ -247,6 +269,38 @@ export const assignTicket = async (
         );
     }
 
+    const isUnassigning = !assigneeId || assigneeId === "unassigned" || assigneeId === "null";
+
+    const previousAssignee = getDocId(ticket.assigneeId) || null;
+
+    if (isUnassigning) {
+        const updatePayload: Record<string, unknown> = {
+            assigneeId: null,
+        };
+        if (ticket.status === TicketStatus.ASSIGNED) {
+            updatePayload.status = TicketStatus.OPEN;
+        }
+
+        const updatedTicket = await updateTicketById(
+            ticketId,
+            updatePayload as Parameters<typeof updateTicketById>[1],
+        );
+
+        if (!updatedTicket) {
+            throw new AppException("Failed to unassign ticket", 500);
+        }
+
+        await recordTicketHistory({
+            ticketId,
+            actorId,
+            action: "assign",
+            oldValue: previousAssignee,
+            newValue: "unassigned",
+        });
+
+        return updatedTicket;
+    }
+
     const assignee = await findUserById(assigneeId);
 
     if (!assignee) {
@@ -259,10 +313,6 @@ export const assignTicket = async (
             400,
         );
     }
-
-    const previousAssignee = ticket.assigneeId
-        ? ticket.assigneeId.toString()
-        : null;
 
     const statusChanged =
         ticket.status === TicketStatus.OPEN &&

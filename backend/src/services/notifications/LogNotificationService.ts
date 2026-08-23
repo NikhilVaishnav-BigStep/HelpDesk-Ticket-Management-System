@@ -5,11 +5,12 @@ import type {
     NotificationRecipient,
     NotificationService,
 } from "./NotificationService.js";
+import { getDocId } from "../../utils/entityHelpers.js";
 
 const asRecipient = async (
     userId: string | null | undefined,
 ): Promise<NotificationRecipient | null> => {
-    if (!userId) {
+    if (!userId || userId === "[object Object]") {
         return null;
     }
     const user = await findUserById(userId);
@@ -29,8 +30,8 @@ export class LogNotificationService implements NotificationService {
         ticket: ITicket,
     ): Promise<NotificationRecipient | null>[] {
         return [
-            asRecipient(ticket.customerId.toString()),
-            asRecipient(ticket.assigneeId?.toString()),
+            asRecipient(getDocId(ticket.customerId)),
+            asRecipient(getDocId(ticket.assigneeId)),
         ];
     }
 
@@ -49,8 +50,8 @@ export class LogNotificationService implements NotificationService {
             subject: ticket.subject,
             status: ticket.status,
             priority: ticket.priority,
-            customerId: ticket.customerId.toString(),
-            assigneeId: ticket.assigneeId?.toString() ?? null,
+            customerId: getDocId(ticket.customerId),
+            assigneeId: getDocId(ticket.assigneeId) || null,
         };
 
         logger.info(
@@ -73,7 +74,7 @@ export class LogNotificationService implements NotificationService {
         newAssigneeId: string,
     ): Promise<void> {
         const recipientSet = new Map<string, NotificationRecipient>();
-        const customer = await asRecipient(ticket.customerId.toString());
+        const customer = await asRecipient(getDocId(ticket.customerId));
         if (customer) {
             recipientSet.set(customer.userId, customer);
         }

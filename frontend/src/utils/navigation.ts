@@ -18,9 +18,19 @@ export const navigationItems: NavItem[] = [
         roles: ["customer"],
     },
     {
-        label: "Agent Queue",
+        label: "My Assigned Tickets",
+        path: "/agent/queue?scope=assigned",
+        roles: ["agent"],
+    },
+    {
+        label: "Unassigned Tickets",
+        path: "/agent/queue?scope=unassigned",
+        roles: ["agent"],
+    },
+    {
+        label: "All Tickets",
         path: "/agent/queue",
-        roles: ["agent", "admin"],
+        roles: ["admin"],
     },
     {
         label: "Reports",

@@ -18,9 +18,9 @@ function getActorName(actor: TimelineEntry["actor"]) {
 
     const actorRecord = actor as Record<string, unknown>;
 
-    return typeof actorRecord.name === "string"
+    return typeof actorRecord.name === "string" && actorRecord.name.trim() !== ""
         ? actorRecord.name
-        : "Unknown user";
+        : "System";
 }
 
 function formatFileSize(size: number) {
@@ -141,7 +141,7 @@ export default function TicketTimeline({ timeline }: TicketTimelineProps) {
                             <div
                                 className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-xs whitespace-pre-wrap leading-relaxed ${
                                     isInternal
-                                        ? "border border-amber-300 bg-amber-50 text-slate-900"
+                                        ? "border border-amber-300 bg-amber-100/90 text-amber-950 font-medium"
                                         : isSelf
                                         ? "bg-blue-600 text-white rounded-br-none"
                                         : "border border-slate-200 bg-white text-slate-800 rounded-bl-none"

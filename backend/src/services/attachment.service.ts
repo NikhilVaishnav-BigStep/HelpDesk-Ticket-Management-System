@@ -11,6 +11,7 @@ import { storageService } from "./storage/index.js";
 import { AppException } from "../exceptions/AppException.js";
 import { TicketStatus } from "../models/Ticket.js";
 import type { UserRole } from "../models/User.js";
+import { getDocId } from "../utils/entityHelpers.js";
 
 const sanitizeFileName = (name: string): string => {
     return name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -48,7 +49,7 @@ export const uploadAttachment = async ({
         throw new AppException("Ticket not found", 404);
     }
 
-    if (role === "customer" && ticket.customerId.toString() !== uploaderId) {
+    if (role === "customer" && getDocId(ticket.customerId) !== uploaderId) {
         throw new AppException(
             "You are not authorized to upload to this ticket",
             403,
@@ -100,7 +101,7 @@ export const getAttachmentMetadata = async ({
     if (role === "customer") {
         const ticket = await findTicketById(attachment.ticketId.toString());
 
-        if (!ticket || ticket.customerId.toString() !== userId) {
+        if (!ticket || getDocId(ticket.customerId) !== userId) {
             throw new AppException(
                 "You are not authorized to view this attachment",
                 403,

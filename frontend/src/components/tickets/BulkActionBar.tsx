@@ -144,8 +144,8 @@ export default function BulkActionBar({
                             variant="primary"
                             size="sm"
                             loading={isSubmitting}
-                            disabled={isSubmitting || !user?._id}
-                            onClick={() => handleBulkAssign(user?._id)}
+                            disabled={isSubmitting || !(user?._id || user?.id)}
+                            onClick={() => handleBulkAssign(user?._id || user?.id)}
                         >
                             Bulk Assign to Me
                         </Button>

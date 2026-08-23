@@ -6,6 +6,7 @@ import { findHistoryByTicketId } from "../repositories/ticketHistory.repository.
 import { findAttachmentsByTicketId } from "../repositories/attachment.repository.js";
 import { User } from "../models/User.js";
 import { AppException } from "../exceptions/AppException.js";
+import { getDocId } from "../utils/entityHelpers.js";
 
 interface ActorSummary {
     id: string;
@@ -38,7 +39,7 @@ interface BaseTimelineEntry {
 
 interface CommentTimelineEntry extends BaseTimelineEntry {
     type: "comment";
-    data: { message: string; commentType: "external" | "internal" };
+    data: { message: string; commentType: "external" | "internal"; type: "external" | "internal" };
 }
 
 interface HistoryTimelineEntry extends BaseTimelineEntry {
@@ -110,7 +111,17 @@ export const getTicketTimeline = async (
         throw new AppException("Ticket not found", 404);
     }
 
-    if (role === "customer" && ticket.customerId.toString() !== userId) {
+    const customerIdStr = getDocId(ticket.customerId);
+    const assigneeIdStr = getDocId(ticket.assigneeId);
+
+    if (role === "customer" && customerIdStr !== userId) {
+        throw new AppException(
+            "You are not authorized to view this ticket",
+            403,
+        );
+    }
+
+    if (role === "agent" && assigneeIdStr && assigneeIdStr !== userId) {
         throw new AppException(
             "You are not authorized to view this ticket",
             403,
@@ -131,24 +142,27 @@ export const getTicketTimeline = async (
     ]);
 
     const actorIds = new Set<string>();
-    actorIds.add(ticket.customerId.toString());
-    if (ticket.assigneeId) {
-        actorIds.add(ticket.assigneeId.toString());
-    }
+    if (customerIdStr) actorIds.add(customerIdStr);
+    if (assigneeIdStr) actorIds.add(assigneeIdStr);
+
     for (const c of comments) {
-        actorIds.add(c.authorId.toString());
+        actorIds.add(getDocId(c.authorId));
     }
     if (includeHistory) {
         for (const h of history) {
-            actorIds.add(h.actorId.toString());
+            actorIds.add(getDocId(h.actorId));
         }
     }
     for (const a of attachments) {
-        actorIds.add(a.uploadedBy.toString());
+        actorIds.add(getDocId(a.uploadedBy));
     }
 
+    const validObjectIds = Array.from(actorIds)
+        .filter((id) => Types.ObjectId.isValid(id))
+        .map((id) => new Types.ObjectId(id));
+
     const actorDocs = await User.find({
-        _id: { $in: Array.from(actorIds) },
+        _id: { $in: validObjectIds },
     })
         .select("_id name role")
         .lean()
@@ -169,8 +183,8 @@ export const getTicketTimeline = async (
             id: c._id.toString(),
             type: "comment",
             createdAt: c.createdAt,
-            actor: buildActor(c.authorId.toString(), actorMap),
-            data: { message: c.message, commentType: c.type },
+            actor: buildActor(getDocId(c.authorId), actorMap),
+            data: { message: c.message, commentType: c.type, type: c.type },
         });
     }
 
@@ -179,7 +193,7 @@ export const getTicketTimeline = async (
             id: h._id.toString(),
             type: "history",
             createdAt: h.createdAt,
-            actor: buildActor(h.actorId.toString(), actorMap),
+            actor: buildActor(getDocId(h.actorId), actorMap),
             data: {
                 action: h.action,
                 oldValue: h.oldValue,
@@ -193,7 +207,7 @@ export const getTicketTimeline = async (
             id: a._id.toString(),
             type: "attachment",
             createdAt: a.createdAt,
-            actor: buildActor(a.uploadedBy.toString(), actorMap),
+            actor: buildActor(getDocId(a.uploadedBy), actorMap),
             data: {
                 fileName: a.fileName,
                 mimeType: a.mimeType,
@@ -212,10 +226,8 @@ export const getTicketTimeline = async (
         subject: ticket.subject,
         status: ticket.status,
         priority: ticket.priority,
-        customer: buildActor(ticket.customerId.toString(), actorMap),
-        assignee: ticket.assigneeId
-            ? buildActor(ticket.assigneeId.toString(), actorMap)
-            : null,
+        customer: buildActor(customerIdStr, actorMap),
+        assignee: assigneeIdStr ? buildActor(assigneeIdStr, actorMap) : null,
         createdAt: ticket.createdAt,
         updatedAt: ticket.updatedAt,
         breached: ticket.breached,

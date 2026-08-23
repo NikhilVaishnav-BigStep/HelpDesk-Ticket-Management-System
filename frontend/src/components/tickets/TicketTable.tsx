@@ -18,6 +18,32 @@ interface TicketTableProps {
     onSelectionChange?: (selectedIds: Set<string>) => void;
 }
 
+// Helper types for populated ticket data from the backend
+interface PopulatedUser {
+    _id: string;
+    name: string;
+    email: string;
+}
+
+function getPopulatedName(
+    value: unknown
+): string {
+    if (!value) return "Unassigned";
+
+    if (typeof value === "object" && value !== null) {
+        const userObj = value as PopulatedUser;
+        if (typeof userObj.name === "string" && userObj.name.trim() !== "") {
+            return userObj.name;
+        }
+    }
+
+    if (typeof value === "string" && value.trim() !== "" && !value.match(/^[0-9a-fA-F]{24}$/)) {
+        return value;
+    }
+
+    return "Unassigned";
+}
+
 export default function TicketTable({
     tickets,
     variant = "customer",
@@ -103,6 +129,12 @@ export default function TicketTable({
                             </th>
                         )}
 
+                        {isAgent && (
+                            <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                Assignee
+                            </th>
+                        )}
+
                         <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                             Status
                         </th>
@@ -169,6 +201,12 @@ export default function TicketTable({
                                     </td>
                                 )}
 
+                                {isAgent && (
+                                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-700">
+                                        {getPopulatedName(ticket.assigneeId)}
+                                    </td>
+                                )}
+
                                 <td className="whitespace-nowrap px-6 py-4">
                                     <Badge variant={ticket.status}>
                                         {ticket.status
@@ -219,28 +257,4 @@ export default function TicketTable({
             </table>
         </div>
     );
-}
-
-// Helper types for populated ticket data from the backend
-interface PopulatedUser {
-    _id: string;
-    name: string;
-    email: string;
-}
-
-/**
- * Safely extract a populated user's name from a field that may be
- * either a plain string ID or a populated user object.
- */
-function getPopulatedName(
-    value: string | null | undefined
-): string {
-    if (!value) return "—";
-
-    // If the backend populates the field, it becomes an object at runtime
-    if (typeof value === "object" && value !== null) {
-        return (value as unknown as PopulatedUser).name ?? "—";
-    }
-
-    return "—";
 }
