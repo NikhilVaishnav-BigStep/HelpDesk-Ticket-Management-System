@@ -19,22 +19,30 @@ export type HistoryAction =
     | "sla_breach"
     | "other";
 
+export interface PopulatedActor {
+    _id?: string;
+    id?: string;
+    name?: string;
+    email?: string;
+    role?: string;
+}
+
 export interface Ticket {
     _id: string;
-    customerId: string;
-    assigneeId: string | null;
+    customerId: string | PopulatedActor;
+    assigneeId: string | PopulatedActor | null;
     categoryId: string | null;
     priority: Priority;
     status: TicketStatus;
     subject: string;
     description: string;
-    responseDueAt: string | null;
-    resolutionDueAt: string | null;
-    respondedAt: string | null;
-    resolvedAt: string | null;
-    closedAt: string | null;
+    responseDueAt?: string | null;
+    resolutionDueAt?: string | null;
+    respondedAt?: string | null;
+    resolvedAt?: string | null;
+    closedAt?: string | null;
     breached: boolean;
-    reopenedAt: string | null;
+    reopenedAt?: string | null;
     createdAt: string;
     updatedAt: string;
 }

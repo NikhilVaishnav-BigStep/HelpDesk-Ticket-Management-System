@@ -4,6 +4,8 @@ import {
     clearTestDb,
 } from "../helpers/testDb.js";
 import { Ticket, TicketPriority, TicketStatus } from "../../src/models/Ticket.js";
+import { User } from "../../src/models/User.js";
+import { Category } from "../../src/models/Category.js";
 import { findTickets } from "../../src/repositories/ticket.repository.js";
 import { Types } from "mongoose";
 

@@ -122,7 +122,9 @@ describe("Ticket lifecycle", () => {
             .set("Authorization", `Bearer ${agent.token}`)
             .send({ assigneeId: agent.id });
         expect(assigned.status).toBe(200);
-        expect(assigned.body.data.assigneeId).toBe(agent.id);
+        expect(
+            assigned.body.data.assigneeId?._id || assigned.body.data.assigneeId
+        ).toBe(agent.id);
         expect(assigned.body.data.status).toBe("assigned");
 
         // change status → in_progress
