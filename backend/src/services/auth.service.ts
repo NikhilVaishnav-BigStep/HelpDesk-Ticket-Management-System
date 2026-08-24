@@ -83,7 +83,7 @@ export const loginUser = async ({
 }: LoginUserInput) => {
     const user = await findUserByEmail(email);
 
-    if (!user) {
+    if (!user || user.deleted) {
         throw new AppException("Invalid email or password", 401);
     }
 

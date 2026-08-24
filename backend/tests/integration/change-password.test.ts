@@ -197,7 +197,7 @@ describe("POST /api/v1/auth/change-password", () => {
         expect(res.status).toBe(401);
     });
 
-    it("returns 404 when the user is soft-deleted", async () => {
+    it("returns 401 when the user is soft-deleted", async () => {
         const user = await seedUser({
             email: "ghost@example.com",
             name: "Ghost",
@@ -217,7 +217,7 @@ describe("POST /api/v1/auth/change-password", () => {
                 newPassword: NEW_PASSWORD,
             });
 
-        expect(res.status).toBe(404);
+        expect(res.status).toBe(401);
     });
 });
 

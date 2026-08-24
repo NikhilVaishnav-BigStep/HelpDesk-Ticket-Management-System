@@ -1,12 +1,13 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppException } from "../exceptions/AppException.js";
 import { verifyToken } from "../utils/jwt.js";
+import { findUserById } from "../repositories/user.repository.js";
 
-export const authenticate = (
+export const authenticate = async (
     req: Request,
     _res: Response,
     next: NextFunction,
-): void => {
+): Promise<void> => {
     const authorization = req.headers.authorization;
 
     if (!authorization || !authorization.startsWith("Bearer ")) {
@@ -24,13 +25,23 @@ export const authenticate = (
     try {
         const payload = verifyToken(token);
 
+        const user = await findUserById(payload.userId);
+        if (!user || user.deleted) {
+            next(new AppException("User account is inactive or deleted", 401));
+            return;
+        }
+
         req.user = {
             userId: payload.userId,
-            role: payload.role,
+            role: user.role,
         };
 
         next();
-    } catch {
+    } catch (err) {
+        if (err instanceof AppException) {
+            next(err);
+            return;
+        }
         next(new AppException("Invalid or expired token", 401));
     }
 };

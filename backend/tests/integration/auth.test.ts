@@ -6,6 +6,7 @@ import {
     clearTestDb,
 } from "../helpers/testDb.js";
 import { seedUser, login } from "../helpers/auth.js";
+import { User } from "../../src/models/User.js";
 
 beforeAll(async () => {
     await connectTestDb();
@@ -112,6 +113,35 @@ describe("POST /api/v1/auth/login", () => {
         const res = await login(app, "nobody@example.com", "Password@1234");
 
         expect(res.status).toBe(401);
+    });
+
+    it("rejects login when user is soft-deleted with 401", async () => {
+        const seeded = await seedUser({
+            email: "deleted@example.com",
+            name: "Deleted User",
+            role: "customer",
+        });
+
+        await User.updateOne(
+            { _id: seeded.id },
+            { $set: { deleted: true, deletedAt: new Date() } },
+        );
+
+        const res = await login(app, seeded.email);
+        expect(res.status).toBe(401);
+        expect(res.body.success).toBe(false);
+
+        // Also verify that an existing JWT from this deleted user is rejected
+        const ticketRes = await request(app)
+            .post("/api/v1/tickets")
+            .set("Authorization", `Bearer ${seeded.token}`)
+            .send({
+                subject: "Test Ticket",
+                description: "Test description",
+                priority: "low",
+            });
+
+        expect(ticketRes.status).toBe(401);
     });
 });
 

@@ -5,27 +5,28 @@ import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import AdminCategoriesPage from "@/pages/admin/AdminCategoriesPage";
 import AdminSlaPage from "@/pages/admin/AdminSlaPage";
 import AdminReportsPage from "@/pages/admin/AdminReportsPage";
+import { AuthContext } from "@/context/AuthContext";
 import * as userApi from "@/api/userApi";
 import * as categoryApi from "@/api/categoryApi";
 import * as slaApi from "@/api/slaApi";
 import * as reportApi from "@/api/reportApi";
 
+const mockAdminUser = {
+  _id: "u1",
+  name: "Ada Admin",
+  email: "admin@helpdesk.local",
+  role: "admin" as const,
+  teamId: "ops",
+  deleted: false,
+  deletedAt: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 describe("AdminUsersPage component", () => {
   beforeEach(() => {
     vi.spyOn(userApi, "getUsers").mockResolvedValue({
-      users: [
-        {
-          _id: "u1",
-          name: "Ada Admin",
-          email: "admin@helpdesk.local",
-          role: "admin",
-          teamId: "ops",
-          deleted: false,
-          deletedAt: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ],
+      users: [mockAdminUser],
       total: 1,
       page: 1,
       limit: 10,
@@ -36,7 +37,19 @@ describe("AdminUsersPage component", () => {
   it("renders user table with names and roles", async () => {
     render(
       <BrowserRouter>
-        <AdminUsersPage />
+        <AuthContext.Provider
+          value={{
+            user: mockAdminUser,
+            token: "tok",
+            isAuthenticated: true,
+            isLoading: false,
+            login: vi.fn(),
+            logout: vi.fn(),
+            refreshUser: vi.fn(),
+          }}
+        >
+          <AdminUsersPage />
+        </AuthContext.Provider>
       </BrowserRouter>
     );
 
