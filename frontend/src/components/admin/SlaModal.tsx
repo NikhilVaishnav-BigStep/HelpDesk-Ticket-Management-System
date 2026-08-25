@@ -8,6 +8,7 @@ import Alert from "@/components/common/Alert";
 import { updateSlaPolicy } from "@/api/slaApi";
 import type { SlaPolicy } from "@/types/sla.types";
 import { getErrorMessage } from "@/utils/errorHelpers";
+import { formatDurationMinutes } from "@/utils/formatters";
 
 interface SlaModalProps {
     isOpen: boolean;
@@ -44,12 +45,12 @@ export default function SlaModal({
         const resNum = Number(resolutionTarget);
 
         if (isNaN(respNum) || respNum < 1) {
-            setError("Response target must be a positive number.");
+            setError("Response target must be a positive number of minutes.");
             return;
         }
 
         if (isNaN(resNum) || resNum < 1) {
-            setError("Resolution target must be a positive number.");
+            setError("Resolution target must be a positive number of minutes.");
             return;
         }
 
@@ -75,6 +76,9 @@ export default function SlaModal({
             setIsSubmitting(false);
         }
     }
+
+    const respNum = Number(responseTarget);
+    const resNum = Number(resolutionTarget);
 
     return (
         <Modal
@@ -103,27 +107,41 @@ export default function SlaModal({
             <form onSubmit={handleSubmit} className="space-y-4">
                 {error && <Alert variant="error">{error}</Alert>}
 
-                <Input
-                    id="response-target"
-                    label="Response Target (hours)"
-                    type="number"
-                    min={1}
-                    value={responseTarget}
-                    onChange={(e) => setResponseTarget(e.target.value)}
-                    required
-                    disabled={isSubmitting}
-                />
+                <div>
+                    <Input
+                        id="response-target"
+                        label="Response Target (minutes)"
+                        type="number"
+                        min={1}
+                        value={responseTarget}
+                        onChange={(e) => setResponseTarget(e.target.value)}
+                        required
+                        disabled={isSubmitting}
+                    />
+                    {!isNaN(respNum) && respNum > 0 && (
+                        <p className="mt-1 text-xs text-slate-500">
+                            ↳ {formatDurationMinutes(respNum)}
+                        </p>
+                    )}
+                </div>
 
-                <Input
-                    id="resolution-target"
-                    label="Resolution Target (hours)"
-                    type="number"
-                    min={1}
-                    value={resolutionTarget}
-                    onChange={(e) => setResolutionTarget(e.target.value)}
-                    required
-                    disabled={isSubmitting}
-                />
+                <div>
+                    <Input
+                        id="resolution-target"
+                        label="Resolution Target (minutes)"
+                        type="number"
+                        min={1}
+                        value={resolutionTarget}
+                        onChange={(e) => setResolutionTarget(e.target.value)}
+                        required
+                        disabled={isSubmitting}
+                    />
+                    {!isNaN(resNum) && resNum > 0 && (
+                        <p className="mt-1 text-xs text-slate-500">
+                            ↳ {formatDurationMinutes(resNum)}
+                        </p>
+                    )}
+                </div>
             </form>
         </Modal>
     );

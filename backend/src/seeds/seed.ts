@@ -16,11 +16,11 @@ const SLA_SEED: Array<{
     responseTarget: number;
     resolutionTarget: number;
 }> = [
-    { priority: "low", responseTarget: 240, resolutionTarget: 2880 },
-    { priority: "medium", responseTarget: 60, resolutionTarget: 480 },
-    { priority: "high", responseTarget: 30, resolutionTarget: 240 },
-    { priority: "urgent", responseTarget: 15, resolutionTarget: 120 },
-];
+        { priority: "low", responseTarget: 240, resolutionTarget: 2880 },
+        { priority: "medium", responseTarget: 120, resolutionTarget: 960 },
+        { priority: "high", responseTarget: 60, resolutionTarget: 480 },
+        { priority: "urgent", responseTarget: 30, resolutionTarget: 240 },
+    ];
 
 const CATEGORY_SEED: Array<{ name: string; status: "active" | "inactive" }> = [
     { name: "Billing", status: "active" },
@@ -135,10 +135,10 @@ interface TicketSeed {
     priority: TicketPriority;
     status: TicketStatus;
     assigneeEmail?: string;
-    daysAgoCreated: number;
-    hoursAgoFirstResponse?: number;
-    hoursAgoResolved?: number;
-    hoursAgoClosed?: number;
+    hoursAgoCreated: number;
+    minutesToFirstResponse?: number;
+    minutesToResolved?: number;
+    minutesToClosed?: number;
     breached?: boolean;
     externalComments?: string[];
     internalNotes?: string[];
@@ -154,8 +154,8 @@ const TICKET_SEED: TicketSeed[] = [
         priority: TicketPriority.HIGH,
         status: TicketStatus.IN_PROGRESS,
         assigneeEmail: "agent.alice@helpdesk.local",
-        daysAgoCreated: 2,
-        hoursAgoFirstResponse: 1,
+        hoursAgoCreated: 1,
+        minutesToFirstResponse: 15,
         breached: false,
         externalComments: [
             "Customer: Still cannot log in. Cleared browser cache.",
@@ -171,8 +171,9 @@ const TICKET_SEED: TicketSeed[] = [
         priority: TicketPriority.MEDIUM,
         status: TicketStatus.ASSIGNED,
         assigneeEmail: "agent.bob@helpdesk.local",
-        daysAgoCreated: 1,
-        hoursAgoFirstResponse: 2,
+        hoursAgoCreated: 2,
+        minutesToFirstResponse: 30,
+        breached: false,
         externalComments: ["Customer: Attaching the invoice PDF."],
     },
     {
@@ -182,7 +183,8 @@ const TICKET_SEED: TicketSeed[] = [
         categoryName: "General",
         priority: TicketPriority.LOW,
         status: TicketStatus.OPEN,
-        daysAgoCreated: 0,
+        hoursAgoCreated: 0.5,
+        breached: false,
     },
     {
         subject: "API returns 500 on POST /orders",
@@ -193,9 +195,10 @@ const TICKET_SEED: TicketSeed[] = [
         priority: TicketPriority.URGENT,
         status: TicketStatus.RESOLVED,
         assigneeEmail: "agent.alice@helpdesk.local",
-        daysAgoCreated: 5,
-        hoursAgoFirstResponse: 0.5,
-        hoursAgoResolved: 3,
+        hoursAgoCreated: 72,
+        minutesToFirstResponse: 10,
+        minutesToResolved: 60,
+        breached: false,
         externalComments: [
             "Customer: Hitting this from production traffic.",
             "Agent: Deployed hotfix in v2.4.1. Please retry.",
@@ -213,10 +216,11 @@ const TICKET_SEED: TicketSeed[] = [
         priority: TicketPriority.HIGH,
         status: TicketStatus.CLOSED,
         assigneeEmail: "agent.bob@helpdesk.local",
-        daysAgoCreated: 10,
-        hoursAgoFirstResponse: 1,
-        hoursAgoResolved: 24,
-        hoursAgoClosed: 48,
+        hoursAgoCreated: 120,
+        minutesToFirstResponse: 20,
+        minutesToResolved: 180,
+        minutesToClosed: 1440,
+        breached: false,
         externalComments: [
             "Agent: Refund processed. Please allow 5 business days.",
         ],
@@ -228,7 +232,8 @@ const TICKET_SEED: TicketSeed[] = [
         categoryName: "Account",
         priority: TicketPriority.LOW,
         status: TicketStatus.OPEN,
-        daysAgoCreated: 3,
+        hoursAgoCreated: 1.5,
+        breached: false,
     },
     {
         subject: "Mobile app crashes on startup (iOS)",
@@ -239,8 +244,9 @@ const TICKET_SEED: TicketSeed[] = [
         priority: TicketPriority.URGENT,
         status: TicketStatus.IN_PROGRESS,
         assigneeEmail: "agent.alice@helpdesk.local",
-        daysAgoCreated: 1,
-        hoursAgoFirstResponse: 0.25,
+        hoursAgoCreated: 0.5,
+        minutesToFirstResponse: 10,
+        breached: false,
         externalComments: [
             "Customer: Happens on iPhone 14, iOS 17.",
             "Agent: Replicated on TestFlight build. Engineering is investigating.",
@@ -258,9 +264,10 @@ const TICKET_SEED: TicketSeed[] = [
         priority: TicketPriority.MEDIUM,
         status: TicketStatus.RESOLVED,
         assigneeEmail: "agent.bob@helpdesk.local",
-        daysAgoCreated: 7,
-        hoursAgoFirstResponse: 4,
-        hoursAgoResolved: 12,
+        hoursAgoCreated: 48,
+        minutesToFirstResponse: 30,
+        minutesToResolved: 240,
+        breached: false,
         externalComments: ["Agent: Sent W-9 to your billing email."],
     },
     {
@@ -272,9 +279,9 @@ const TICKET_SEED: TicketSeed[] = [
         priority: TicketPriority.LOW,
         status: TicketStatus.RESOLVED,
         assigneeEmail: "agent.alice@helpdesk.local",
-        daysAgoCreated: 30,
-        hoursAgoFirstResponse: 24,
-        hoursAgoResolved: 72,
+        hoursAgoCreated: 240,
+        minutesToFirstResponse: 480,
+        minutesToResolved: 3600,
         breached: true,
         externalComments: [],
         internalNotes: ["Agent: Marked as breached to populate reports."],
@@ -288,7 +295,7 @@ const TICKET_SEED: TicketSeed[] = [
         priority: TicketPriority.HIGH,
         status: TicketStatus.OPEN,
         assigneeEmail: "agent.alice@helpdesk.local",
-        daysAgoCreated: 2,
+        hoursAgoCreated: 6,
         breached: true,
     },
 ];
@@ -311,6 +318,8 @@ const seedTickets = async (
         Attachment.deleteMany({}),
     ]);
 
+    const now = Date.now();
+
     for (const t of TICKET_SEED) {
         const customerId = users.get(t.customerEmail)!;
         const categoryId = categories.get(t.categoryName)!;
@@ -319,28 +328,19 @@ const seedTickets = async (
             : undefined;
 
         const createdAt = new Date(
-            Date.now() - t.daysAgoCreated * 24 * 60 * MINUTE_MS,
+            now - Math.round(t.hoursAgoCreated * 60 * MINUTE_MS),
         );
         const respondedAt =
-            t.hoursAgoFirstResponse !== undefined
-                ? new Date(
-                      createdAt.getTime() +
-                          t.hoursAgoFirstResponse * 60 * MINUTE_MS,
-                  )
+            t.minutesToFirstResponse !== undefined
+                ? addMinutes(createdAt, t.minutesToFirstResponse)
                 : undefined;
         const resolvedAt =
-            t.hoursAgoResolved !== undefined
-                ? new Date(
-                      createdAt.getTime() +
-                          t.hoursAgoResolved * 60 * MINUTE_MS,
-                  )
+            t.minutesToResolved !== undefined
+                ? addMinutes(createdAt, t.minutesToResolved)
                 : undefined;
         const closedAt =
-            t.hoursAgoClosed !== undefined
-                ? new Date(
-                      createdAt.getTime() +
-                          t.hoursAgoClosed * 60 * MINUTE_MS,
-                  )
+            t.minutesToClosed !== undefined
+                ? addMinutes(createdAt, t.minutesToClosed)
                 : undefined;
 
         const { response, resolution } = slaMinutes(t.priority);
@@ -349,8 +349,8 @@ const seedTickets = async (
 
         const breached =
             t.breached === true ||
-            (resolvedAt !== undefined &&
-                resolvedAt > resolutionDueAt) ||
+            (respondedAt !== undefined && respondedAt > responseDueAt) ||
+            (resolvedAt !== undefined && resolvedAt > resolutionDueAt) ||
             (t.status !== TicketStatus.RESOLVED &&
                 t.status !== TicketStatus.CLOSED &&
                 new Date() > resolutionDueAt);
@@ -370,6 +370,8 @@ const seedTickets = async (
             closedAt,
             breached,
             reopenedAt: undefined,
+            createdAt,
+            updatedAt: closedAt ?? resolvedAt ?? respondedAt ?? createdAt,
         });
 
         // History: creation
@@ -379,6 +381,7 @@ const seedTickets = async (
             action: "other",
             oldValue: null,
             newValue: "Ticket created",
+            createdAt,
         });
 
         if (assigneeId) {
@@ -388,6 +391,7 @@ const seedTickets = async (
                 action: "assign",
                 oldValue: null,
                 newValue: assigneeId.toString(),
+                createdAt: respondedAt ?? addMinutes(createdAt, 5),
             });
         }
 
@@ -401,6 +405,7 @@ const seedTickets = async (
                         : "status_change",
                 oldValue: TicketStatus.OPEN,
                 newValue: t.status,
+                createdAt: closedAt ?? resolvedAt ?? respondedAt ?? addMinutes(createdAt, 10),
             });
         }
 
@@ -411,6 +416,7 @@ const seedTickets = async (
                 action: "sla_breach",
                 oldValue: "within_sla",
                 newValue: "breached",
+                createdAt: resolutionDueAt,
             });
         }
 
@@ -440,12 +446,15 @@ const seedTickets = async (
             });
         }
 
-        for (const c of authorCycle) {
+        for (let i = 0; i < authorCycle.length; i++) {
+            const commentTime = addMinutes(createdAt, 5 + i * 5);
             await Comment.create({
                 ticketId: ticket._id,
-                authorId: c.authorId,
-                type: c.type,
-                message: c.message,
+                authorId: authorCycle[i].authorId,
+                type: authorCycle[i].type,
+                message: authorCycle[i].message,
+                createdAt: commentTime,
+                updatedAt: commentTime,
             });
         }
 
@@ -461,6 +470,8 @@ const seedTickets = async (
                 storageKey: `seed/${ticket._id.toString()}/invoice.pdf`,
                 mimeType: "application/pdf",
                 size: 12_345,
+                createdAt,
+                updatedAt: createdAt,
             });
         }
     }

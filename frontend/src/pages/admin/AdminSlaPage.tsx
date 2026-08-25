@@ -10,6 +10,7 @@ import Badge from "@/components/common/Badge";
 
 import SlaModal from "@/components/admin/SlaModal";
 import { getErrorMessage } from "@/utils/errorHelpers";
+import { formatDurationMinutes } from "@/utils/formatters";
 
 export default function AdminSlaPage() {
     const [policies, setPolicies] = useState<SlaPolicy[]>([]);
@@ -48,7 +49,7 @@ export default function AdminSlaPage() {
                     SLA Policies
                 </h1>
                 <p className="mt-1 text-sm text-slate-600">
-                    Configure response and resolution SLA target times (in hours) for each ticket priority level.
+                    Configure response and resolution SLA target times (stored in minutes) for each ticket priority level.
                 </p>
             </div>
 
@@ -95,11 +96,11 @@ export default function AdminSlaPage() {
                                     </td>
 
                                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
-                                        {policy.responseTarget} hour{policy.responseTarget !== 1 ? "s" : ""}
+                                        {formatDurationMinutes(policy.responseTarget)}
                                     </td>
 
                                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900">
-                                        {policy.resolutionTarget} hour{policy.resolutionTarget !== 1 ? "s" : ""}
+                                        {formatDurationMinutes(policy.resolutionTarget)}
                                     </td>
 
                                     <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500">
